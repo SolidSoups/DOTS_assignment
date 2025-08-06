@@ -4,59 +4,55 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <iostream>
 #include <string>
+#include <Debug.h>
 
-#define DEBUG_LOG
-#ifdef DEBUG_LOG
-#define log(msg) std::cout << msg << "\n";
-#endif
-
-
+const int DOTS_AMOUNT = 500;
 
 int main(int argc, char *args[]) {
-  log("PROGRAM START");
+  Debug::Log("PROGRAM START");
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-    log("SDL_init failed!");
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
     return 1;
   }
-  log("SDL_init success!");
 
   if (!TTF_Init()) {
-    log("TTF init failed!");
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
     SDL_Quit();
     return 1;
   }
-  log("TTF_init success!");
 
   SDL_Window *window =
       SDL_CreateWindow("Game", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
 
   DotRenderer *renderer = new DotRenderer(window);
   if (!renderer->GetSDLRenderer()) {
-    log("DotRenderer->GetSDLRenderer() failed!");
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
     delete renderer;
     SDL_DestroyWindow(window);
     TTF_Quit();
     SDL_Quit();
     return 1;
   }
-  log("DotRenderer->GetSDLRenderer() success!");
 
   TTF_Font *font = TTF_OpenFont("./fonts/arial.ttf", 24);
   if (font == nullptr) {
-    log("TTF_OpenFont failed!");
     const char *err = SDL_GetError();
-    log(err);
+    Debug::LogError(err);
     TTF_Quit();
     SDL_Quit();
     return 1;
   }
-  log("TTF_OpenFont success!");
+
+  
 
   renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
-  Game *game = new Game(renderer, 500);
-  log("Game Created!")
+  Game *game = new Game(renderer, DOTS_AMOUNT);
+  Debug* debug = new Debug(renderer, font);
 
   bool quit = false;
   SDL_Event e;
@@ -66,18 +62,23 @@ int main(int argc, char *args[]) {
   double deltaTime = 0;
   double fps = 0;
   int frameCount = 0;
+  int totalFrameCount = 0;
   double fpsAccumulator = 0.0;
   const double FPS_UPDATE_INTERVAL = 0.2f;
 
+  // text debug
+  std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(DOTS_AMOUNT);
+  debug->UpdateScreenField("DOTS", dotsCountText);
+
   while (!quit) {
-    std::string frameoutput = "Frame: " + std::to_string(frameCount);
-    log(frameoutput);
+
     currentTick = SDL_GetPerformanceCounter();
     deltaTime =
         (double)(currentTick - lastTick) / SDL_GetPerformanceFrequency();
     lastTick = currentTick;
 
     frameCount++;
+    totalFrameCount++;
     fpsAccumulator += deltaTime;
 
     if (fpsAccumulator >= FPS_UPDATE_INTERVAL) {
@@ -105,26 +106,31 @@ int main(int argc, char *args[]) {
 
     // - FPS COUNTER -
     std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
-    SDL_Surface *textSurface =
-        TTF_RenderText_Solid(font, fpsText.c_str(), 0, {255, 255, 255, 255});
-    if (textSurface != nullptr) {
-      SDL_Texture *textTexture =
-          SDL_CreateTextureFromSurface(renderer->GetSDLRenderer(), textSurface);
-      if (textTexture != nullptr) {
-        SDL_FRect renderQuad = {0, 0, (float)textSurface->w,
-                                (float)textSurface->h};
-        renderer->RenderTexture(textTexture, nullptr, &renderQuad);
-        SDL_DestroyTexture(textTexture);
-      }
-      SDL_DestroySurface(textSurface);
-    }
-    // - FPS COUNTER -
+    debug->UpdateScreenField("hello", fpsText);
+    std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(DOTS_AMOUNT);
+    debug->Render();
+
+    // SDL_Surface *textSurface =
+    //     TTF_RenderText_Solid(font, fpsText.c_str(), 0, {255, 255, 255, 255});
+    // if (textSurface != nullptr) {
+    //   SDL_Texture *textTexture =
+    //       SDL_CreateTextureFromSurface(renderer->GetSDLRenderer(), textSurface);
+    //   if (textTexture != nullptr) {
+    //     SDL_FRect renderQuad = {0, 0, (float)textSurface->w,
+    //                             (float)textSurface->h};
+    //     renderer->RenderTexture(textTexture, nullptr, &renderQuad);
+    //     SDL_DestroyTexture(textTexture);
+    //   }
+    //   SDL_DestroySurface(textSurface);
+    // }
+    // // - FPS COUNTER -
 
     renderer->Present();
   }
 
   delete game;
   delete renderer;
+  delete debug;
   TTF_CloseFont(font);
   SDL_DestroyWindow(window);
   TTF_Quit();

@@ -3,13 +3,14 @@
 
 class DotRenderer;
 
-class Dot
+class Dot // 40 bytes !!!!
 {
 public:
 
 	Dot(glm::vec2 aPosition, float aRadius);
 	void Render(DotRenderer* aRenderer, float dt);
 	void TakeDamage(int someDamage);
+  void hello();
 
 	glm::vec2 position;
 	glm::vec2 startPos;

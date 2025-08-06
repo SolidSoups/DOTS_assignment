@@ -2,6 +2,7 @@
 #include "Dot.h"
 #include "DotRenderer.h"
 #include "QuadTree.h"
+#include "Debug.h"
 #include "glm/glm.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -24,12 +25,8 @@ Game::Game(DotRenderer *aRenderer, const int dotAmount)
 
     dots.push_back(d);
   }
-  std::cout << "GAME: Created dots" << "\n";
 
-  // To debug collision
-  dots[0]->overriden = true;
-  dots[0]->Radius = 10;
-  // To debug collision
+  Debug::Log("GAME: Created dots");
 
   timeSinceUpdate = 0.0f;
   createQuadTree();
