@@ -3,6 +3,7 @@
 #include "Game.h"
 #include <random>
 #include <glm/gtc/constants.hpp>
+#include <ctime>
 
 const float DotVelocity = 50.0f;
 

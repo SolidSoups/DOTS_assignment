@@ -1,114 +1,134 @@
+#include "DotRenderer.h"
+#include "Game.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <iostream>
 #include <string>
-#include "Game.h"
-#include "DotRenderer.h"
+
+#define DEBUG_LOG
+#ifdef DEBUG_LOG
+#define log(msg) std::cout << msg << "\n";
+#endif
 
 
-int main(int argc, char* args[])
-{
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
-	{
-		return 1;
-	}
 
-	if (!TTF_Init())
-	{
-		SDL_Quit();
-		return 1;
-	}
+int main(int argc, char *args[]) {
+  log("PROGRAM START");
 
-	SDL_Window* window = SDL_CreateWindow("Game", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+    log("SDL_init failed!");
+    return 1;
+  }
+  log("SDL_init success!");
 
-	DotRenderer* renderer = new DotRenderer(window);
-	if (!renderer->GetSDLRenderer())
-	{
-		delete renderer;
-		SDL_DestroyWindow(window);
-		TTF_Quit();
-		SDL_Quit();
-		return 1;
-	}
+  if (!TTF_Init()) {
+    log("TTF init failed!");
+    SDL_Quit();
+    return 1;
+  }
+  log("TTF_init success!");
 
-	TTF_Font* font = TTF_OpenFont("fonts/arial.ttf", 24);
-	if (font == nullptr)
-	{
-		const char* err = SDL_GetError();
-		TTF_Quit();
-		SDL_Quit();
-		return 1;
-	}
+  SDL_Window *window =
+      SDL_CreateWindow("Game", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
 
-	renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
+  DotRenderer *renderer = new DotRenderer(window);
+  if (!renderer->GetSDLRenderer()) {
+    log("DotRenderer->GetSDLRenderer() failed!");
+    delete renderer;
+    SDL_DestroyWindow(window);
+    TTF_Quit();
+    SDL_Quit();
+    return 1;
+  }
+  log("DotRenderer->GetSDLRenderer() success!");
 
-	Game* game = new Game(renderer);
+  TTF_Font *font = TTF_OpenFont("./fonts/arial.ttf", 24);
+  if (font == nullptr) {
+    log("TTF_OpenFont failed!");
+    const char *err = SDL_GetError();
+    log(err);
+    TTF_Quit();
+    SDL_Quit();
+    return 1;
+  }
+  log("TTF_OpenFont success!");
 
-	bool quit = false;
-	SDL_Event e;
+  renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
-	Uint64 lastTick = SDL_GetPerformanceCounter();
-	Uint64 currentTick;
-	double deltaTime = 0;
-	double fps = 0;
-	int frameCount = 0;
-	double fpsAccumulator = 0.0;
-	const double FPS_UPDATE_INTERVAL = 0.2f;
+  Game *game = new Game(renderer, 500);
+  log("Game Created!")
 
-	while (!quit)
-	{
-		currentTick = SDL_GetPerformanceCounter();
-		deltaTime = (double)(currentTick - lastTick) / SDL_GetPerformanceFrequency();
-		lastTick = currentTick;
+  bool quit = false;
+  SDL_Event e;
 
-		frameCount++;
-		fpsAccumulator += deltaTime;
+  Uint64 lastTick = SDL_GetPerformanceCounter();
+  Uint64 currentTick;
+  double deltaTime = 0;
+  double fps = 0;
+  int frameCount = 0;
+  double fpsAccumulator = 0.0;
+  const double FPS_UPDATE_INTERVAL = 0.2f;
 
-		if (fpsAccumulator >= FPS_UPDATE_INTERVAL)
-		{
-			fps = frameCount / fpsAccumulator;
-			frameCount = 0;
-			fpsAccumulator = 0.0;
-		}
+  while (!quit) {
+    std::string frameoutput = "Frame: " + std::to_string(frameCount);
+    log(frameoutput);
+    currentTick = SDL_GetPerformanceCounter();
+    deltaTime =
+        (double)(currentTick - lastTick) / SDL_GetPerformanceFrequency();
+    lastTick = currentTick;
 
-		while (SDL_PollEvent(&e) != 0)
-		{
-			if (e.type == SDL_EVENT_QUIT)
-			{
-				quit = true;
-			}
-		}
+    frameCount++;
+    fpsAccumulator += deltaTime;
 
-		renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF); 
-		renderer->Clear();
+    if (fpsAccumulator >= FPS_UPDATE_INTERVAL) {
+      fps = frameCount / fpsAccumulator;
+      frameCount = 0;
+      fpsAccumulator = 0.0;
+    }
 
-		game->Update(deltaTime);
+    while (SDL_PollEvent(&e) != 0) {
+      switch (e.type) {
+      case SDL_EVENT_QUIT:
+        quit = true;
+        break;
+      case SDL_EVENT_KEY_DOWN:
+        if (e.key.key == SDLK_ESCAPE)
+          quit = true;
+        break;
+      }
+    }
 
+    renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
+    renderer->Clear();
 
-		// - FPS COUNTER -
-		std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
-		SDL_Surface* textSurface = TTF_RenderText_Solid(font, fpsText.c_str(), 0, { 255, 255, 255, 255 }); 
-		if (textSurface != nullptr)
-		{
-			SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer->GetSDLRenderer(), textSurface);
-			if (textTexture != nullptr)
-			{
-				SDL_FRect renderQuad = { 0, 0, (float)textSurface->w, (float)textSurface->h }; 
-				renderer->RenderTexture(textTexture, nullptr, &renderQuad);
-				SDL_DestroyTexture(textTexture);
-			}
-			SDL_DestroySurface(textSurface);
-		}
-		// - FPS COUNTER -
+    game->Update(deltaTime);
 
-		renderer->Present();
-	}
+    // - FPS COUNTER -
+    std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
+    SDL_Surface *textSurface =
+        TTF_RenderText_Solid(font, fpsText.c_str(), 0, {255, 255, 255, 255});
+    if (textSurface != nullptr) {
+      SDL_Texture *textTexture =
+          SDL_CreateTextureFromSurface(renderer->GetSDLRenderer(), textSurface);
+      if (textTexture != nullptr) {
+        SDL_FRect renderQuad = {0, 0, (float)textSurface->w,
+                                (float)textSurface->h};
+        renderer->RenderTexture(textTexture, nullptr, &renderQuad);
+        SDL_DestroyTexture(textTexture);
+      }
+      SDL_DestroySurface(textSurface);
+    }
+    // - FPS COUNTER -
 
-	delete game;
-	delete renderer;
-	TTF_CloseFont(font);
-	SDL_DestroyWindow(window);
-	TTF_Quit();
-	SDL_Quit();
+    renderer->Present();
+  }
 
-	return 0;
+  delete game;
+  delete renderer;
+  TTF_CloseFont(font);
+  SDL_DestroyWindow(window);
+  TTF_Quit();
+  SDL_Quit();
+
+  return 0;
 }
