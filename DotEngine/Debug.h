@@ -18,11 +18,15 @@ struct DebugTextInfoItem{
 // TODO: implement a save file for logs? unecessary for now
 class Debug {
 public:
-  Debug(DotRenderer *renderer, TTF_Font* font);
+  static Debug* Instance;
+  static Debug& GetInstance(DotRenderer *renderer, TTF_Font* font);
+  static void DeleteInstance();
+
   ~Debug();
   void Render();
 
 private:
+  Debug(DotRenderer *renderer, TTF_Font* font);
   DotRenderer *_renderer;
   TTF_Font* m_font;
 

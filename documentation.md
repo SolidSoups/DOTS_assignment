@@ -13,4 +13,5 @@ My current tasks are:
 Implemented the logging system and for the UI as well, it's quite nice and handy to easily add new debug info to the screen.
 
 My next task is as follows:
- - [ ] Analyze the size of each dot, using less memory == able to have more dots
+ - [X] Analyze the size of each dot, using less memory == able to have more dots
+    - Was able to minimize it to 32 bytes, could do more with bit masking

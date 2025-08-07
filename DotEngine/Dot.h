@@ -1,26 +1,23 @@
 #pragma once
 #include "glm/glm.hpp"
+#include <cstdint>
 
 class DotRenderer;
 
-class Dot // 40 bytes !!!!
+class Dot // 32 bytes !!!!
 {
 public:
 
 	Dot(glm::vec2 aPosition, float aRadius);
+  void Init(glm::vec2 aPosition, float aRadius);
 	void Render(DotRenderer* aRenderer, float dt);
-	void TakeDamage(int someDamage);
-  void hello();
 
-	glm::vec2 position;
-	glm::vec2 startPos;
-	glm::vec2 velocity;
+	glm::vec2 position;   // 8B
+	glm::vec2 startPos;   // 8B
+	glm::vec2 velocity;   // 8B
 
-	float totalTime = 0;
-	float Radius = 0;
+	float totalTime = 0;  // 4B
 
-	int health;
-
-	bool overriden = false;
+  uint16_t radius;     // 2B 0-255
 };
 

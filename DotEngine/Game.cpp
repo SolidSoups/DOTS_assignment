@@ -1,8 +1,8 @@
 #include "Game.h"
+#include "Debug.h"
 #include "Dot.h"
 #include "DotRenderer.h"
 #include "QuadTree.h"
-#include "Debug.h"
 #include "glm/glm.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -25,23 +25,33 @@ Game::Game(DotRenderer *aRenderer, const int dotAmount)
 
     dots.push_back(d);
   }
-
+  Debug::Log("GAME: Size of dot: " + std::to_string(sizeof(*dots[0])));
   Debug::Log("GAME: Created dots");
 
   timeSinceUpdate = 0.0f;
   createQuadTree();
 }
 
+Game::~Game() { CleanUp(); }
+
 void Game::Update(float aDeltaTime) {
   // increment quadTreeTime
   timeSinceUpdate += aDeltaTime;
   // reset and create quadTree
   if (timeSinceUpdate >= QUAD_TIME_MILLIS / 1000.f) {
-    createQuadTree();
+    createQuadTree(); // don't create, update!
     timeSinceUpdate = 0.0f;
   }
 
-  std::vector<Dot *> toDestroy;
+  processCollisions();
+  for (Dot *d : dots) {
+    if (d != nullptr) {
+      d->Render(renderer, aDeltaTime);
+    }
+  }
+}
+
+void Game::processCollisions() {
   for (Dot *d1 : dots) {
     if (d1 == nullptr)
       continue;
@@ -49,13 +59,14 @@ void Game::Update(float aDeltaTime) {
     std::vector<Dot *> dotQuery;
     quadTree->query(AABB(d1->position.x - RANGE_CHECK_SIZE / 2.f,
                          d1->position.y - RANGE_CHECK_SIZE / 2.f,
-                         RANGE_CHECK_SIZE, RANGE_CHECK_SIZE),
+                         d1->radius + RANGE_CHECK_SIZE,
+                         d1->radius + RANGE_CHECK_SIZE),
                     dotQuery);
 
     for (Dot *d2 : dotQuery) {
       if (d1 != d2 && d1 != nullptr && d2 != nullptr) {
-        float dist = glm::distance(d1->position, d2->position);
-        float minDist = d1->Radius + d2->Radius;
+        float dist = glm::distance(d2->position, d1->position);
+        float minDist = d1->radius + d2->radius;
 
         if (dist < minDist) {
           glm::vec2 normal = glm::normalize(d2->position - d1->position);
@@ -63,33 +74,17 @@ void Game::Update(float aDeltaTime) {
           d1->velocity = glm::reflect(d1->velocity, normal);
           d2->velocity = glm::reflect(d2->velocity, -normal);
 
-          float overlap1 = 1.5f * ((minDist + 1) - dist);
-          float overlap2 = 1.5f * (minDist - dist);
-          d1->position -= normal * overlap1;
-          d2->position += normal * overlap2;
-          d1->TakeDamage(1);
-          d2->TakeDamage(1);
-          d1->Radius++;
+          float overlap = (minDist - dist);
+          d1->position += normal * overlap;
+          d2->position -= normal * overlap;
+          d1->radius++;
+          d2->radius++;
         }
       }
     }
-    if (d1->health <= 0) {
-      toDestroy.push_back(d1);
-    }
-  }
-
-  for (Dot *deadDot : toDestroy) {
-    auto it = std::find(dots.begin(), dots.end(), deadDot);
-    if (it != dots.end()) {
-      delete *it;
-      *it =
-          new Dot({std::rand() % SCREEN_WIDTH, std::rand() % SCREEN_HEIGHT}, 3);
-    }
-  }
-
-  for (Dot *d : dots) {
-    if (d != nullptr) {
-      d->Render(renderer, aDeltaTime);
+    if (d1->radius >= 6) {
+      d1->Init({std::rand() % SCREEN_WIDTH, std::rand() % SCREEN_HEIGHT}, 3);
+      quadTree->insert(d1);
     }
   }
 }
@@ -104,7 +99,18 @@ void Game::createQuadTree() {
   for (Dot *d : dots) {
     quadTree->insert(d);
   }
-  std::cout << "GAME: Created a new Quad Tree" << "\n";
 }
 
-void Game::CleanUp() {}
+void Game::CleanUp() {
+  // delete tree
+  if (quadTree) {
+    delete quadTree;
+    quadTree = nullptr;
+  }
+
+  // delete dots
+  for (int i = 0; i < dots.size(); ++i) {
+    delete dots[i];
+    dots[i] = nullptr;
+  }
+}

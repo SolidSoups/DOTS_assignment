@@ -6,14 +6,25 @@
 // std
 #include <iostream>
 
+Debug* Debug::Instance{nullptr};
+
+Debug& Debug::GetInstance(DotRenderer *renderer, TTF_Font* font){
+  if(Instance == nullptr){
+    Instance = new Debug(renderer, font);
+  }
+  return *Instance;
+}
+
 // initialization
 Debug::Debug(DotRenderer *renderer, TTF_Font *font)
-    : _renderer(renderer), m_font(font) {}
+    : _renderer(renderer), m_font(font) {
+}
 
 Debug::~Debug(){
   for(const auto& item_kvp : textDebugInfoMap){
     SDL_DestroyTexture(item_kvp.second.texture);
   } 
+  delete Instance;
 }
 
 // screen logging
@@ -59,8 +70,6 @@ void Debug::UpdateScreenField(std::string key, std::string value) {
   }
   // TODO: delete surface
   SDL_DestroySurface(textSurface);
-
-  Log("There are currently " + std::to_string(textDebugInfoMap.size()) + " elements in the map.");
 }
 
 // console logging

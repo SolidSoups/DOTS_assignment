@@ -4,18 +4,20 @@
 
 class Dot;
 
-static const int MAX_OCCUPANTS = 10;
+static const int MAX_OCCUPANTS = 4;
+static const int MAX_DEPTH = 15;
 
 class QuadTree{
 public:
   // constructor
-  QuadTree(const AABB& bounds);
+  QuadTree(const AABB& bounds, int current_depth = 1);
   ~QuadTree();
 
   // members
   std::vector<Dot*> dots;
   AABB bounds;  
   bool divided = false;
+  int depth = 0;
 
   // methods
   bool insert(Dot* dot);
