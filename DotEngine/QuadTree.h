@@ -4,14 +4,14 @@
 
 class Dot;
 
-static const int MAX_OCCUPANTS = 4;
-static const int MAX_DEPTH = 15;
-
 class QuadTree{
 public:
   // constructor
   QuadTree(const AABB& bounds, int current_depth = 1);
   ~QuadTree();
+
+  const int max_depth;
+  const int max_occ;
 
   // members
   std::vector<Dot*> dots;

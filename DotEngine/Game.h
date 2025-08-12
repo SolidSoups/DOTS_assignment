@@ -2,11 +2,6 @@
 #include <vector>
 #include "AABB.h"
 
-static const int SCREEN_WIDTH = 1400;
-static const int SCREEN_HEIGHT = 800;
-static const int QUAD_TIME_MILLIS = 10;
-static const int RANGE_CHECK_SIZE = 20;
-
 class DotRenderer;
 class QuadTree;
 class Dot;
@@ -14,17 +9,22 @@ class Dot;
 class Game
 {
 public:
-	Game(DotRenderer* aRenderer, const int dots);
+	Game(DotRenderer* aRenderer);
   ~Game();
 	void Update(float aDeltaTime);
   void processCollisions();
+  void collideDots(Dot* d1, Dot* d2);
 	void CleanUp();
   void createQuadTree();
 private:
   float timeSinceUpdate;
   std::vector<Dot*> dots;
-  const int dot_amount = 10;
 
+private:
+  const int dot_amount;
+  const int screen_height;
+  const int screen_width;
+  const int quad_refresh_rate_millis;
 
 	DotRenderer* renderer; // self managed
 

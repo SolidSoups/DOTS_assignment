@@ -8,9 +8,10 @@ class Dot // 32 bytes !!!!
 {
 public:
 
-	Dot(glm::vec2 aPosition, float aRadius);
-  void Init(glm::vec2 aPosition, float aRadius);
-	void Render(DotRenderer* aRenderer, float dt);
+	Dot(glm::vec2 aPosition);
+  void Init(glm::vec2 aPosition);
+  void Update(float dt);
+  void Render(DotRenderer* aRenderer, float dt);
 
 	glm::vec2 position;   // 8B
 	glm::vec2 startPos;   // 8B

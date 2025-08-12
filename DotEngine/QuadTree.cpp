@@ -1,11 +1,14 @@
 #include "QuadTree.h"
 #include "Dot.h"
+#include "DotSettings.h"
 
 // std
 #include <vector>
 
 QuadTree::QuadTree(const AABB &bounds, int current_depth)
-    : bounds(bounds), divided(false) {
+    : bounds(bounds), divided(false),
+      max_depth(globalSettings.QUAD_TREE_MAX_DEPTH),
+      max_occ(globalSettings.QUAD_TREE_MAX_OCCUPANTS) {
   // set all childs to null
   branches[0] = nullptr;
   branches[1] = nullptr;
@@ -32,7 +35,7 @@ bool QuadTree::insert(Dot *dot) {
   }
 
   // normal insertion if occupancy is small, or if max depth is reached
-  if (dots.size() < MAX_OCCUPANTS || depth == MAX_DEPTH) {
+  if (dots.size() < max_occ || depth == max_depth) {
     dots.push_back(dot);
     return true;
   }

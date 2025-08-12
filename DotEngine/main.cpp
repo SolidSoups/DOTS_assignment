@@ -7,9 +7,7 @@
 #include <Debug.h>
 #include <algorithm>
 #include "FrameTime.h"
-
-const int DOTS_AMOUNT = 9000;
-
+#include "DotSettings.h"
 
 int main(int argc, char *args[]) {
   Debug::Log("PROGRAM START");
@@ -28,7 +26,7 @@ int main(int argc, char *args[]) {
   }
 
   SDL_Window *window =
-      SDL_CreateWindow("Game", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+      SDL_CreateWindow("Game", globalSettings.SCREEN_WIDTH, globalSettings.SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
 
   DotRenderer *renderer = new DotRenderer(window);
   if (!renderer->GetSDLRenderer()) {
@@ -54,7 +52,7 @@ int main(int argc, char *args[]) {
 
   renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
-  Game *game = new Game(renderer, DOTS_AMOUNT);
+  Game *game = new Game(renderer);
   Debug& debug = Debug::GetInstance(renderer, font);
 
   bool quit = false;
@@ -71,7 +69,7 @@ int main(int argc, char *args[]) {
   const double FPS_UPDATE_INTERVAL = 0.2f;
 
   // text debug
-  std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(DOTS_AMOUNT);
+  std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(globalSettings.DOTS_AMOUNT);
   debug.UpdateScreenField("DOTS", dotsCountText);
 
   while (!quit) {

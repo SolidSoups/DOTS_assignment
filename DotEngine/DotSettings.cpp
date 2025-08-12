@@ -1,0 +1,14 @@
+#include "DotSettings.h"
+
+Settings globalSettings{
+  .SCREEN_WIDTH = 1400,
+  .SCREEN_HEIGHT = 800,
+
+  .QUAD_TREE_MILLIS_REFRESH_TIME = 4, 
+  .QUAD_TREE_MAX_OCCUPANTS = 48,
+  .QUAD_TREE_MAX_DEPTH = 8,
+
+  .DOTS_AMOUNT = 9000,
+  .DOT_RADIUS = 1,
+  .DOT_VELOCITY = 50
+};
