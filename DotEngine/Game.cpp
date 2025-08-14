@@ -64,6 +64,12 @@ void Game::processCollisions() {
     if (d1 == nullptr)
       continue;
 
+    if (d1->radius >= globalSettings.DOT_RADIUS + 3) {
+      d1->Init({std::rand() % screen_width, std::rand() % screen_height});
+      quadTree->insert(d1);
+      continue;
+    }
+
     float queryRadius = d1->radius * 2.f;
     AABB queryBounds{d1->position.x - queryRadius, d1->position.y - queryRadius,
                      queryRadius * 2.f, queryRadius * 2.f};
@@ -75,10 +81,6 @@ void Game::processCollisions() {
       if (d1 != d2 && d2 != nullptr) {
         collideDots(d1, d2);
       }
-    }
-    if (d1->radius >= globalSettings.DOT_RADIUS + 3) {
-      d1->Init({std::rand() % screen_width, std::rand() % screen_height});
-      quadTree->insert(d1);
     }
   }
 }
@@ -104,7 +106,7 @@ void Game::collideDots(Dot *d1, Dot *d2) {
 
     d1->radius++;
     d2->radius++;
-    Debug::Log("[GAME] Collision!");
+    // Debug::Log("[GAME] Collision!");
   }
 }
 
