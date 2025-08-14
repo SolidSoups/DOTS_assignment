@@ -20,5 +20,7 @@ public:
 	float totalTime = 0;  // 4B
 
   uint16_t radius;     // 2B 0-255
+  
+  size_t currentCellIndex;
 };
 

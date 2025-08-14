@@ -6,17 +6,18 @@
 #include "QuadTree.h"
 #include "glm/glm.hpp"
 #include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <iostream>
 
 Game::Game(DotRenderer *aRenderer)
-    : quadTree(nullptr), renderer(aRenderer),
-      dot_amount(globalSettings.DOTS_AMOUNT),
+    : renderer(aRenderer), dot_amount(globalSettings.DOTS_AMOUNT),
       screen_width(globalSettings.SCREEN_WIDTH),
-      screen_height(globalSettings.SCREEN_HEIGHT),
-      quad_refresh_rate_millis(globalSettings.QUAD_TREE_MILLIS_REFRESH_TIME),
-      default_bounds(0.0f, 0.0f, screen_width, screen_height) 
-{
+      screen_height(globalSettings.SCREEN_HEIGHT) {
+  // create grid
+  grid = new FastGrid(globalSettings.SCREEN_WIDTH, globalSettings.SCREEN_HEIGHT,
+                      globalSettings.DOT_RADIUS);
+
   for (size_t i = 0; i < dot_amount; i++) {
     int diry = std::rand() % 2;
     int dirx = std::rand() % 2;
@@ -24,62 +25,88 @@ Game::Game(DotRenderer *aRenderer)
     dirx = -1 ? dirx > 1 : dirx;
     diry = -1 ? diry > 1 : diry;
 
-    Dot *d =
-        new Dot({std::rand() % screen_width, std::rand() % screen_height});
+    Dot *d = new Dot({std::rand() % screen_width, std::rand() % screen_height});
 
     dots.push_back(d);
+    grid->Insert(d);
   }
   Debug::Log("GAME: Size of dot: " + std::to_string(sizeof(*dots[0])));
   Debug::Log("GAME: Created dots");
 
-  timeSinceUpdate = 0.0f;
-  createQuadTree();
+  KeySettings newSettings;
+  newSettings.textColor = {120, 120, 0, 255};
+  Debug::UpdateKeySettings("UpdateTime", newSettings);
+  Debug::UpdateKeySettings("RenderTime", newSettings);
+  Debug::UpdateKeySettings("CollisionTime", newSettings);
 }
 
 Game::~Game() { CleanUp(); }
 
 void Game::Update(float aDeltaTime) {
-  // increment quadTreeTime
-  timeSinceUpdate += aDeltaTime;
-  // reset and create quadTree
-  if (timeSinceUpdate >= quad_refresh_rate_millis / 1000.f) {
-    createQuadTree(); // don't create, update!
-    timeSinceUpdate = 0.0f;
-  }
+  auto start = std::chrono::high_resolution_clock::now();
+  for (Dot *dot : dots) {
+    dot->Update(aDeltaTime);
 
-  for (Dot *d : dots) {
-    d->Update(aDeltaTime);
+    size_t currentIndex = grid->getCellIndex(dot->position);
+    // index was updated
+    if (currentIndex != dot->currentCellIndex) {
+      grid->UpdateDot(dot);
+    }
   }
+  auto after_update = std::chrono::high_resolution_clock::now();
+  int after_update_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(after_update -
+                                                            start)
+          .count();
+  std::string updateTimeStr =
+      "UpdateTime: " + std::to_string(after_update_millis);
+  Debug::UpdateScreenField("UpdateTime", updateTimeStr);
 
   processCollisions();
+  auto after_collision = std::chrono::high_resolution_clock::now();
+  int after_collision_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(after_collision -
+                                                            after_update)
+          .count();
+  std::string collisionTime_str =
+      "CollisionTime: " + std::to_string(after_collision_millis);
+  Debug::UpdateScreenField("CollisionTime", collisionTime_str);
+
   for (Dot *d : dots) {
     if (d != nullptr) {
       d->Render(renderer, aDeltaTime);
     }
   }
+
+  auto after_render = std::chrono::high_resolution_clock::now();
+  int after_render_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(after_render -
+                                                            after_collision)
+          .count();
+  std::string renderTimeStr =
+      "RenderTime: " + std::to_string(after_render_millis);
+  Debug::UpdateScreenField("RenderTime", renderTimeStr);
 }
 
 void Game::processCollisions() {
-  for (Dot *d1 : dots) {
+  collisionPairs.clear();
+  collisionPairs.reserve(100);
+  collectCollisions();
+}
+
+void Game::collectCollisions() {
+  for (int i = 0; i < dots.size(); ++i) {
+    Dot *d1 = dots[i];
     if (d1 == nullptr)
-      continue;
+      return;
 
-    float queryRadius = d1->radius * 2.f;
-    AABB queryBounds{d1->position.x - queryRadius, d1->position.y - queryRadius,
-                     queryRadius * 2.f, queryRadius * 2.f};
-
-    std::vector<Dot *> nearbyDots;
-    quadTree->query(queryBounds, nearbyDots);
-
-    for (Dot *d2 : nearbyDots) {
-      if (d1 != d2 && d2 != nullptr) {
-        collideDots(d1, d2);
-      }
-    }
-    if (d1->radius >= globalSettings.DOT_RADIUS + 3) {
-      d1->Init({std::rand() % screen_width, std::rand() % screen_height});
-      quadTree->insert(d1);
-    }
+    glm::ivec2 pos = grid->getGridPos(d1);
+    float radius = d1->radius;
+    grid->ForEachInQueryArea(pos, radius, [&](Dot* d2){
+      if (d1 != d2 && d2 > d1)
+        collisionPairs.push_back({d1, d2});
+      return true;
+    });
   }
 }
 
@@ -108,23 +135,10 @@ void Game::collideDots(Dot *d1, Dot *d2) {
   }
 }
 
-void Game::createQuadTree() {
-  if (quadTree != nullptr) {
-    delete quadTree;
-    quadTree = nullptr;
-  }
-
-  quadTree = new QuadTree(default_bounds);
-  for (Dot *d : dots) {
-    quadTree->insert(d);
-  }
-}
-
 void Game::CleanUp() {
-  // delete tree
-  if (quadTree) {
-    delete quadTree;
-    quadTree = nullptr;
+  if (grid) {
+    delete grid;
+    grid = nullptr;
   }
 
   // delete dots

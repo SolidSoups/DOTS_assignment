@@ -17,11 +17,11 @@ private:
   std::vector<float> frameTimesNew;
   int currentIndex = 0;
   float acc = 0.f;
-  Debug& debug;
+  Debug* debug;
 
 public: 
   float onepercentlow = 0.0f;
-  FrameTime(Debug& debug) : currentIndex(0), debug(debug) {
+  FrameTime(Debug* debug) : currentIndex(0), debug(debug) {
     memset(frameTimes, 0, sizeof(float)*MAX_FRAMES);
   }
 

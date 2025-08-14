@@ -52,8 +52,8 @@ int main(int argc, char *args[]) {
 
   renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
+  Debug* debug = new Debug(renderer, font);
   Game *game = new Game(renderer);
-  Debug& debug = Debug::GetInstance(renderer, font);
 
   bool quit = false;
   SDL_Event e;
@@ -70,7 +70,7 @@ int main(int argc, char *args[]) {
 
   // text debug
   std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(globalSettings.DOTS_AMOUNT);
-  debug.UpdateScreenField("DOTS", dotsCountText);
+  debug->UpdateScreenField("DOTS", dotsCountText);
 
   while (!quit) {
 
@@ -111,11 +111,11 @@ int main(int argc, char *args[]) {
 
     // - DEBUG
     std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
-    debug.UpdateScreenField("fps", fpsText);
+    debug->UpdateScreenField("fps", fpsText);
     std::string onePLow = "1% LOW: " + 
       std::to_string(static_cast<int>(frameTime.onepercentlow)) + "ms";
-    debug.UpdateScreenField("opl", onePLow);
-    debug.Render();
+    debug->UpdateScreenField("opl", onePLow);
+    debug->Render();
 
     renderer->Present();
   }

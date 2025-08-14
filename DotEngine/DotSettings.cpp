@@ -8,7 +8,7 @@ Settings globalSettings{
   .QUAD_TREE_MAX_OCCUPANTS = 48,
   .QUAD_TREE_MAX_DEPTH = 8,
 
-  .DOTS_AMOUNT = 9000,
+  .DOTS_AMOUNT = 2000,
   .DOT_RADIUS = 1,
   .DOT_VELOCITY = 50
 };
