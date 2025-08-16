@@ -1,13 +1,13 @@
 #include "DotRenderer.h"
+#include "Settings.h"
+#include "FrameTime.h"
 #include "Game.h"
+#include <Debug.h>
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
+#include <algorithm>
 #include <iostream>
 #include <string>
-#include <Debug.h>
-#include <algorithm>
-#include "FrameTime.h"
-#include "DotSettings.h"
 
 int main(int argc, char *args[]) {
   Debug::Log("PROGRAM START");
@@ -26,7 +26,8 @@ int main(int argc, char *args[]) {
   }
 
   SDL_Window *window =
-      SDL_CreateWindow("Game", globalSettings.SCREEN_WIDTH, globalSettings.SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+      SDL_CreateWindow("Game", Settings::SCREEN_WIDTH,
+                       Settings::SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
 
   DotRenderer *renderer = new DotRenderer(window);
   if (!renderer->GetSDLRenderer()) {
@@ -48,12 +49,10 @@ int main(int argc, char *args[]) {
     return 1;
   }
 
-  
-
   renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
+  Debug *debug = new Debug(renderer, font);
   Game *game = new Game(renderer);
-  Debug& debug = Debug::GetInstance(renderer, font);
 
   bool quit = false;
   SDL_Event e;
@@ -63,14 +62,15 @@ int main(int argc, char *args[]) {
   double deltaTime = 0;
   double fps = 0;
   int frameCount = 0;
-  FrameTime frameTime(debug);
+  FrameTime frameTime;
   int totalFrameCount = 0;
   double fpsAccumulator = 0.0;
   const double FPS_UPDATE_INTERVAL = 0.2f;
 
   // text debug
-  std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(globalSettings.DOTS_AMOUNT);
-  debug.UpdateScreenField("DOTS", dotsCountText);
+  std::string dotsCountText =
+      "DOTS_AMOUNT: " + std::to_string(Settings::DOTS_AMOUNT);
+  debug->UpdateScreenField("DOTS", dotsCountText);
 
   while (!quit) {
 
@@ -111,11 +111,12 @@ int main(int argc, char *args[]) {
 
     // - DEBUG
     std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
-    debug.UpdateScreenField("fps", fpsText);
-    std::string onePLow = "1% LOW: " + 
-      std::to_string(static_cast<int>(frameTime.onepercentlow)) + "ms";
-    debug.UpdateScreenField("opl", onePLow);
-    debug.Render();
+    debug->UpdateScreenField("fps", fpsText);
+    std::string onePLow =
+        "1% LOW: " + std::to_string(static_cast<int>(frameTime.onepercentlow)) +
+        "ms";
+    debug->UpdateScreenField("opl", onePLow);
+    debug->Render();
 
     renderer->Present();
   }

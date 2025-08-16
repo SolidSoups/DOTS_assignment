@@ -2,12 +2,18 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "SDL3/SDL_pixels.h"
 
 #define DEBUG_MODE_ON
 
 class DotRenderer;
 class SDL_Texture;
 struct TTF_Font;
+
+
+struct KeySettings{
+  SDL_Color textColor;
+};
 
 struct DebugTextInfoItem{
   SDL_Texture* texture;
@@ -18,22 +24,24 @@ struct DebugTextInfoItem{
 // TODO: implement a save file for logs? unecessary for now
 class Debug {
 public:
-  static Debug* Instance;
-  static Debug& GetInstance(DotRenderer *renderer, TTF_Font* font);
+  Debug(DotRenderer *renderer, TTF_Font* font);
+  static Debug* GetInstance();
   static void DeleteInstance();
 
   ~Debug();
   void Render();
 
 private:
-  Debug(DotRenderer *renderer, TTF_Font* font);
+  static Debug* Instance;
   DotRenderer *_renderer;
   TTF_Font* m_font;
 
 public: // screen debug
-  void UpdateScreenField(std::string key, std::string value);
+  static void UpdateScreenField(std::string key, std::string value);
+  static void UpdateKeySettings(std::string key, KeySettings settings);
 private:
   std::unordered_map<std::string, std::string> debugValuesMap;
+  std::unordered_map<std::string, KeySettings> keySettingsMap;
   std::unordered_map<std::string, DebugTextInfoItem> textDebugInfoMap;
   std::vector<std::string> keysOrder;
 

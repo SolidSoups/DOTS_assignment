@@ -1,14 +1,17 @@
 #include "QuadTree.h"
 #include "Dot.h"
-#include "DotSettings.h"
+#include "Settings.h"
 
 // std
+#include <algorithm>
+#include <queue>
+#include <utility>
 #include <vector>
 
 QuadTree::QuadTree(const AABB &bounds, int current_depth)
     : bounds(bounds), divided(false),
-      max_depth(globalSettings.QUAD_TREE_MAX_DEPTH),
-      max_occ(globalSettings.QUAD_TREE_MAX_OCCUPANTS) {
+      max_depth(Settings::QUAD_TREE_MAX_DEPTH),
+      max_occ(Settings::QUAD_TREE_MAX_OCCUPANTS) {
   // set all childs to null
   branches[0] = nullptr;
   branches[1] = nullptr;
@@ -86,6 +89,7 @@ void QuadTree::subdivide() {
   dots.clear();
   divided = true;
 }
+
 
 bool QuadTree::query(const AABB &range, std::vector<Dot *> &found) const {
   // early-escape if we don't overlap the range

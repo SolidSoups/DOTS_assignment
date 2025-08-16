@@ -8,16 +8,17 @@
 
 Debug* Debug::Instance{nullptr};
 
-Debug& Debug::GetInstance(DotRenderer *renderer, TTF_Font* font){
-  if(Instance == nullptr){
-    Instance = new Debug(renderer, font);
-  }
-  return *Instance;
+Debug* Debug::GetInstance(){
+  return Instance;
 }
 
 // initialization
 Debug::Debug(DotRenderer *renderer, TTF_Font *font)
     : _renderer(renderer), m_font(font) {
+  if(Instance == nullptr){
+    Instance = this;
+    Log("[DEBUG] Set Instance");
+  }
 }
 
 Debug::~Debug(){
@@ -41,7 +42,12 @@ void Debug::Render() {
 }
 
 void Debug::UpdateScreenField(std::string key, std::string value) {
-  auto [iterator, bInserted] = debugValuesMap.insert({key, value});
+  if(Instance == nullptr){
+    LogError("[DEBUG] Instance not created");
+    return;
+  }
+
+  auto [iterator, bInserted] = Instance->debugValuesMap.insert({key, value});
 
   if (!bInserted){
     // the key already exists
@@ -56,20 +62,32 @@ void Debug::UpdateScreenField(std::string key, std::string value) {
   }
   else{
     // it's a new item, keep track of order
-    keysOrder.push_back(key);
+    Instance->keysOrder.push_back(key);
   }
 
   // update the texture
+  SDL_Color textColor = {255, 255, 255, 255};
+  if(Instance->keySettingsMap.contains(key)){
+    textColor = Instance->keySettingsMap[key].textColor;
+  }
+
+
   SDL_Surface *textSurface =
-      TTF_RenderText_Solid(m_font, value.c_str(), 0, {255, 255, 255, 255});
+      TTF_RenderText_Solid(Instance->m_font, value.c_str(), 0, textColor);
   if (textSurface != nullptr) {
     SDL_Texture *textTexture =
-        SDL_CreateTextureFromSurface(_renderer->GetSDLRenderer(), textSurface);
+        SDL_CreateTextureFromSurface(Instance->_renderer->GetSDLRenderer(), textSurface);
     // update text info map
-    textDebugInfoMap[key] = {textTexture, textSurface->w, textSurface->h};
+    Instance->textDebugInfoMap[key] = {textTexture, textSurface->w, textSurface->h};
   }
   // TODO: delete surface
   SDL_DestroySurface(textSurface);
+}
+
+void Debug::UpdateKeySettings(std::string key, KeySettings settings){
+  if(Instance == nullptr)
+    return;
+  Instance->keySettingsMap[key] = settings;
 }
 
 // console logging
