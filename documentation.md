@@ -1,19 +1,23 @@
 
 # Wednesday, 6 August 2025
 Committed everything. In this time I implemented the following:
- - *Changed Build Tool*
-    - Went from VSCode to CMake, using the Ninja Build tool. Created a CMakeList.txt and linked the libraries together.
- - Removed intentional memory leaks. In Game::Update(), there is a part of the code responsible for deleting "killed" dots, but the code only set the pointer of the Dot to a nullptr, and didn't actually delete it. Later I will remove the deletion entirely.
- - Implemented QuadTree. Nothing to say here, this was pretty simple.
+- *Changed Build Tool*
+    - Went from VSCode to CMake, using the Ninja Build tool. Created a CMakeList.txt and linked the
+    libraries together.
+- Removed intentional memory leaks. In Game::Update(), there is a part of the code responsible for
+deleting "killed" dots, but the code only set the pointer of the Dot to a nullptr, and didn't
+actually delete it. Later I will remove the deletion entirely.
+- Implemented QuadTree. Nothing to say here, this was pretty simple.
 
 My current tasks are:
- - [x] Implement a logging system
- - [x] Implement a Debug UI system (could be apart of logging too)
+- [x] Implement a logging system
+- [x] Implement a Debug UI system (could be apart of logging too)
 
-Implemented the logging system and for the UI as well, it's quite nice and handy to easily add new debug info to the screen.
+Implemented the logging system and for the UI as well, it's quite nice and handy to easily add new
+debug info to the screen.
 
 My next task is as follows:
- - [x] Analyze the size of each dot, using less memory == able to have more dots
+- [x] Analyze the size of each dot, using less memory == able to have more dots
     - Was able to minimize it to 32 bytes, could do more with bit masking
 
 # Sunday, 17 August 2025
@@ -105,16 +109,15 @@ for(int i = 0; i < 8; i+=4){
 ```
 
 Here, we got a cache miss on the 2nd line, so we still have to go retrieve new cache memory. But,
-there are still 3 operations where we got a cache hit! So while we retrieve the new cache memory,
-the CPU has something to do! CPU's often don't run line by line, and in fact when possible will
-run code in any order it wants in order to speed up performance. So these other lines will
-actually be calculated WHILE the cache is getting retrieved.
+there are still 3 operations where we got a cache hit! So while we retrieve the new cache memory, the
+CPU has something to do! CPU's often don't run line by line, and in fact when possible will run code
+in any order it wants in order to speed up performance. So these other lines will actually be
+calculated WHILE the cache is getting retrieved.
 
 So my next tasks are as follows:
- - [ ] Change implementation of the Dots. Instead of having a Dot structure, I will have a Dots
- class which will store all the data of the dots in seperate arrays. This will surely improve
- performance.
- - [ ] I will look around for any places to do some loop unrolling!
+- [ ] Change implementation of the Dots. Instead of having a Dot structure, I will have a Dots class
+which will store all the data of the dots in seperate arrays. This will surely improve performance.
+- [ ] I will look around for any places to do some loop unrolling!
 
 Update:
  - Implemented the SoA, but performance remains the same:
@@ -126,9 +129,49 @@ Update:
     [LOG] QuadTime: 7ms         **(+1ms)**
     [LOG] DOTS_AMOUNT: 9000     **(n/a)**
     
-    I'm curious as to why that is, maybe I need to go deeper. Currently i'm storing the positions
-    and velocities as glm::vec2, but for a pure approach it might be better to split it up.
+    I'm curious as to why that is, maybe I need to go deeper. Currently i'm storing the positions and
+    velocities as glm::vec2, but for a pure approach it might be better to split it up.
+
+Update:
+I did some profiling with a new SimpleProfiler class i created:
+```
+[SimpleProfiler Report]:
+    QuadTree query: 22.09ms avg (2650.23ms total, 120 calls)
+    filter dead: 0.43ms avg (51.63ms total, 120 calls)
+    alive_indices: 0.00ms avg (0.16ms total, 120 calls)
+    total: 22.52ms avg (2702.58ms total, 120 calls)
+[LOG] LOGGING KVP DEBUG VALUES:
+[LOG] 1% LOW: 44ms
+[LOG] FPS: 21
+[LOG] RenderTime: 8ms
+[LOG] CollisionTime: 22ms
+[LOG] UpdateTime: 0ms
+[LOG] QuadTime: 12ms
+[LOG] DOTS_AMOUNT: 9000
+```
+
+It seems like mose of the time is taken up by that nasty QuadTree query, an a negligable amount by filtering out the dead ones first. I'm next going to
+profile the QuadTree query.
+
+For the query we have the counted stats:
+```
+QuadTree stats: 
+visits=147596 rejects=102962 checks=9848 efficiency=69.8%
+
+MAX_DOTS=32 MAX_LEVELS=4
+```
+Woah, this is really innefficient. We are checking 147k but only actually finding a range we are looking for 70% of the time. Maybe i should try
+another approach with a faster lookup time.
 
 # Cool pics
-![Accidental, 2025-08-17](images/2025-08-17-screenshot.png "Accidentally caused this while implementing SoA")
+Accidentally caused this cool effect while implementing SoA. If you look closely, you can see that
+the QuadTreeNodes contain vast amounts of nodes, yet along the x-x axis there is a more correct
+distribution of QuadTreeNodes. This happened because I incorrectly mistyped a 'y' to a 'x' like so:
+
+```
+if (!bounds.contains(dots.positions_x[index], dots.positions_x[index])) {
+    return false;
+}
+```
+![Accidental, 2025-08-17](images/2025-08-17-screenshot.png "Accidental")
 

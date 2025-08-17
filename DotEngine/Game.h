@@ -15,7 +15,7 @@ public:
   ~Game();
 	void Update(float aDeltaTime);
   void processCollisions();
-  void collideDots(const size_t& i1, const size_t& i2);
+  void collideDots(size_t i1, size_t i2);
 private:
   float timeSinceUpdate;
   /// Owner: Game

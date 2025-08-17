@@ -3,6 +3,7 @@
 // includes
 #include "AABB.h"
 #include "Dots.h"
+#include "SimpleProfiler.h"
 
 // std
 #include <memory>
@@ -10,8 +11,13 @@
 
 class QuadTreeNode {
 public:
-  static const int MAX_OBJECTS = 8;
-  static const int MAX_LEVELS = 9;
+  static const int MAX_OBJECTS = 32;
+  static const int MAX_LEVELS = 4;
+
+  //tmp
+  mutable size_t query_visits = 0;
+  mutable size_t query_bounds_rejected = 0;
+  mutable size_t query_leafs_checks = 0;
 
 private:
   int level;
@@ -31,8 +37,9 @@ public:
   ~QuadTreeNode() = default; // TODO: what is this
 
   bool insert(size_t index, const Dots& dots) {
+
     // if dot doesnt fit inside this node's bounds, ignore it
-    if (!bounds.contains(dots.positions_x[index], dots.positions_x[index])) {
+    if (!bounds.contains(dots.positions_x[index], dots.positions_y[index])) {
       return false;
     }
 
@@ -59,13 +66,17 @@ public:
   // Query dots in a given range, now with zero allocations
   template <typename Callback>
   void query(const AABB &range, Callback callback) const {
+    query_visits++;
+
     // Early escape if we don't overlap the range
     if (!bounds.overlaps(range)) {
+      query_bounds_rejected++;
       return;
     }
 
     // If not divided, chekk all dots in this node
     if (!divided) {
+      query_leafs_checks++;
       for (size_t dot_index : dots_indices) {
         callback(dot_index); // its faster not to check range here (+10fps)
       }
@@ -146,6 +157,29 @@ private:
       }
     }
   }
+
+public: //tmp
+  void resetStats() const{
+    query_visits = 0;
+    query_bounds_rejected = 0;
+    query_leafs_checks = 0;
+    if(divided){
+      for(int i=0; i<4; i++){
+        if(branches[i]) branches[i]->resetStats();
+      }
+    }
+  }
+
+  void collectStats(size_t& visits, size_t& rejects, size_t& checks) const{
+    visits += query_visits;
+    rejects += query_bounds_rejected;
+    checks += query_leafs_checks;
+    if(divided){
+      for(int i=0; i<4;i++){
+        if(branches[i]) branches[i]->collectStats(visits, rejects, checks);
+      }
+    }
+  }
 };
 
 
@@ -197,4 +231,6 @@ public:
     }
     return {};
   }
+
+  QuadTreeNode* getRoot() const { return root.get(); }
 };
