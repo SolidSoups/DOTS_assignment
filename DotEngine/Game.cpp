@@ -18,69 +18,41 @@ Game::Game(DotRenderer *aRenderer) : renderer(aRenderer) {
   Debug::UpdateKeySettings("RenderTime", settings);
   Debug::UpdateKeySettings("CollisionTime", settings);
   Debug::UpdateKeySettings("UpdateTime", settings);
-  Debug::UpdateKeySettings("QuadTime", settings);
+  Debug::UpdateKeySettings("GridBuildTime", settings);
 
   grid.rebuild(dots);
 }
 
 Game::~Game() {}
 
+SimpleProfiler pf1;
 void Game::Update(float aDeltaTime) {
-  auto start = std::chrono::high_resolution_clock::now();
-
+  pf1.startTimer("grid_build");
   grid.rebuild(dots);
-  auto QuadTime_ch = std::chrono::high_resolution_clock::now();
+  pf1.stopTimer("grid_build");
 
   // Update all the dots positions
+  pf1.startTimer("dots_update");
   dots.updateAll(aDeltaTime);
-  auto UpdateTime_ch = std::chrono::high_resolution_clock::now();
+  pf1.stopTimer("dots_update");
 
   // Process all collisions
+  pf1.startTimer("collisions");
   processCollisions();
-  auto CollisionTime_ch = std::chrono::high_resolution_clock::now();
+  pf1.stopTimer("collisions");
 
   // Render all the dots
+  pf1.startTimer("render");
   dots.renderAll(renderer);
-
-  // Render all QuadTree bounds
-  auto RenderTime_ch = std::chrono::high_resolution_clock::now();
+  pf1.stopTimer("render");
 
   // ####################
   // ## DEBUG TIMINGS: ##
   // ####################
-
-  // Quad Time info
-  int QuadTime_millis =
-      std::chrono::duration_cast<std::chrono::milliseconds>(QuadTime_ch - start)
-          .count();
-  std::string QuadTime_str =
-      "QuadTime: " + std::to_string(QuadTime_millis) + "ms";
-  Debug::UpdateScreenField("QuadTime", QuadTime_str);
-
-  // Update time info
-  int UpdateTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
-                              UpdateTime_ch - QuadTime_ch)
-                              .count();
-  std::string UpdateTime_str =
-      "UpdateTime: " + std::to_string(UpdateTime_millis) + "ms";
-  Debug::UpdateScreenField("UpdateTime", UpdateTime_str);
-
-  // Collision time info
-  int CollisionTime_millis =
-      std::chrono::duration_cast<std::chrono::milliseconds>(CollisionTime_ch -
-                                                            UpdateTime_ch)
-          .count();
-  std::string CollisionTime_str =
-      "CollisionTime: " + std::to_string(CollisionTime_millis) + "ms";
-  Debug::UpdateScreenField("CollisionTime", CollisionTime_str);
-
-  // Render time info
-  int RenderTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
-                              RenderTime_ch - CollisionTime_ch)
-                              .count();
-  std::string RenderTime_str =
-      "RenderTime: " + std::to_string(RenderTime_millis) + "ms";
-  Debug::UpdateScreenField("RenderTime", RenderTime_str);
+  Debug::UpdateScreenField("GridBuildTime", pf1.getFormattedTimer("grid_build"));
+  Debug::UpdateScreenField("UpdateTime", pf1.getFormattedTimer("dots_update"));
+  Debug::UpdateScreenField("CollisionTime", pf1.getFormattedTimer("collisions"));
+  Debug::UpdateScreenField("RenderTime", pf1.getFormattedTimer("render"));
 }
 
 SimpleProfiler profiler;

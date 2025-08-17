@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
+#include "SimpleProfiler.h"
 
 int main() {
   Debug::Log("PROGRAM START");
@@ -63,6 +64,7 @@ int main() {
   double fps = 0;
   int frameCount = 0;
   FrameTime frameTime;
+  SimpleProfiler pf1;
   int totalFrameCount = 0;
   double fpsAccumulator = 0.0;
   const double FPS_UPDATE_INTERVAL = 0.2f;
@@ -73,7 +75,6 @@ int main() {
   debug->UpdateScreenField("DOTS", dotsCountText);
 
   while (!quit) {
-
     currentTick = SDL_GetPerformanceCounter();
     deltaTime =
         (double)(currentTick - lastTick) / SDL_GetPerformanceFrequency();

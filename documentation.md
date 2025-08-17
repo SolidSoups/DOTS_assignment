@@ -176,8 +176,9 @@ implementation gives me this:
 
 This is really cool. I'm finally back to where i was before, and along the way I could drop that dang QuadTree.
 
-Next up is some clean-up. I want to hammer in this profiler i created, and clean up some of my code. It should be pretty simple to get profiling data, such as timings and counts, avg and
+ - [x] Next up is some clean-up. I want to hammer in this profiler I created, and clean up some of my code. It should be pretty simple to get profiling data, such as timings and counts, avg and
 screen debug info.
+- [ ] Take a look at some optimizations for the renderer.
 
 # Cool pics
     Accidentally caused this cool effect while implementing SoA. If you look closely, you can see that
