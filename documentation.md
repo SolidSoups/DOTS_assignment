@@ -129,5 +129,6 @@ Update:
     I'm curious as to why that is, maybe I need to go deeper. Currently i'm storing the positions
     and velocities as glm::vec2, but for a pure approach it might be better to split it up.
 
-![woahhh](images/2025-08-17-screenshot.png)
+# Cool pics
+![Accidental, 2025-08-17](images/2025-08-17-screenshot.png "Accidentally caused this while implementing SoA")
 
