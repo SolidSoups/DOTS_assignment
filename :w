@@ -1,0 +1,72 @@
+#include "Dots.h"
+#include "DotRenderer.h"
+#include "Settings.h"
+#include <cstring>
+#include <ctime>
+#include <random>
+#include "glm/gtc/constants.hpp"
+
+// Constructor
+Dots::Dots() { Init(); }
+
+// Deconstructor
+Dots::~Dots() {}
+
+// Initializes the whole structure
+void Dots::Init() {
+
+  // init pos velocity
+  thread_local static std::mt19937 rng(
+      static_cast<unsigned int>(time(nullptr)));
+  thread_local static std::uniform_real_distribution<float> angleDist(0.0f, 2.0f * glm::pi<float>());
+  
+  for(int i=0; i<MAX_DOTS; i++){
+    pos[i] = {std::rand() % Settings::SCREEN_WIDTH, std::rand() % Settings::SCREEN_HEIGHT};
+    float angle = angleDist(rng);
+    vel[i] = {std::cos()}
+  }
+
+  
+
+  // init radius
+  std::memset(rad, 3, sizeof(rad));
+}
+
+// Reinitializes a single dot
+void Dots::InitDot(size_t index) {}
+
+// Updates all the dots
+void Dots::UpdateAll(float deltaTime) {
+  for (size_t i = 0; i < MAX_DOTS; i++) {
+    pos[i] += vel[i] * VELOCITY * deltaTime;
+
+    // X-Axis bounds check
+    if (pos[i].x - rad[i] < 0.0f) {
+      pos[i].x = rad[i];
+      vel[i].x *= -1.f;
+    } else if (pos[i].x + rad[i] > Settings::SCREEN_WIDTH) {
+      pos[i].x = Settings::SCREEN_WIDTH - rad[i];
+      vel[i].x *= -1.f;
+    }
+
+    // Y-Axis bounds check
+    if (pos[i].y - rad[i] < 0.0f) {
+      pos[i].y = rad[i];
+      vel[i].y *= -1.f;
+    } else if (pos[i].y + rad[i] > Settings::SCREEN_HEIGHT) {
+      pos[i].y = Settings::SCREEN_HEIGHT - rad[i];
+      vel[i].y *= -1.f;
+    }
+  }
+}
+
+// Renders all the dots
+void Dots::RenderAll(DotRenderer *aRenderer) {
+  const float foo = 0.5f * 255.0f;
+
+  for (size_t i = 0; i < MAX_DOTS; i++) {
+    float r = foo + (rad[i] - RADIUS) * foo * 3.f;
+    aRenderer->SetDrawColor(foo + (rad[i] - RADIUS) * foo * 3.f, foo, foo, 255);
+    aRenderer->DrawFilledCircle(pos[i].x, pos[i].y, rad[i]);
+  }
+}

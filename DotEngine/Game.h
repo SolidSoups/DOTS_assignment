@@ -2,10 +2,11 @@
 #include <vector>
 #include <memory>
 #include "AABB.h"
+#include "Dots.h"
+
 
 class DotRenderer;
 class QuadTree;
-class Dot;
 
 class Game
 {
@@ -14,12 +15,11 @@ public:
   ~Game();
 	void Update(float aDeltaTime);
   void processCollisions();
-  void collideDots(Dot* d1, Dot* d2);
-	void CleanUp();
-  void createQuadTree();
+  void collideDots(const size_t& i1, const size_t& i2);
 private:
   float timeSinceUpdate;
-  std::vector<Dot*> dots;
+  /// Owner: Game
+  Dots dots;
 
 private:
 	DotRenderer* renderer; // self managed

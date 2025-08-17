@@ -26,6 +26,7 @@ Current Stats:
     [LOG] QuadTime: 6ms
     [LOG] DOTS_AMOUNT: 9000
 
+
 I reimplemented the QuadTree in a new header file, and it is a lot prettier now and cleaner. Problem is, for some reason went
 from 70fps to 35fps, basically halving the performance. I need to look into this.
 
@@ -37,9 +38,13 @@ Next on my list is making the data more cache friendly. Cache-friendly layouts p
 Structure of Arrays (SoA) over Array of Structures (AoS) can deliver up to 50x faster execution [NumberAnalytics](https://www.numberanalytics.com/blog/ultimate-guide-to-cache-memory-optimization). Storing Arrays of structures leads to worse performance, because say we want to update the position of every dot on the screen. We initially loop through every Dot, and access its position. The CPU, being smart, will load as many dots into the cache as possible, but in the process also load velocity, radius, and other data. This extra data takes up cache space but isn't even being USED! Not to mention, the dots probably have some small bad alignment, meaning there is data in the cache that is completely empty! Here is a text drawn example.
 
 Assuming 72B of cache memory:
-\[[ P1, V1, R1, P2, V2, R2, P3, V3, R3 ]\]
+```
+[ P1, V1, R1, P2, V2, R2, P3, V3, R3 ]
+```
                 <=>
-\[[ P1, P2, P3, P4, P5, P6, P7, P8, P9, ]\]
+```
+[ P1, P2, P3, P4, P5, P6, P7, P8, P9 ]
+```
 
 As you can see, we can fit 3x more positional data into the cache by packing our data with
 SoA.
@@ -111,4 +116,18 @@ So my next tasks are as follows:
  performance.
  - [ ] I will look around for any places to do some loop unrolling!
 
+Update:
+ - Implemented the SoA, but performance remains the same:
+    [LOG] 1% LOW: 28ms          **(+2ms)**
+    [LOG] FPS: 33               **(n/a)**
+    [LOG] RenderTime: 5ms       **(n/a)**    
+    [LOG] CollisionTime: 14ms   **(n/a)**
+    [LOG] UpdateTime: 0ms       **(n/a)**
+    [LOG] QuadTime: 7ms         **(+1ms)**
+    [LOG] DOTS_AMOUNT: 9000     **(n/a)**
+    
+    I'm curious as to why that is, maybe I need to go deeper. Currently i'm storing the positions
+    and velocities as glm::vec2, but for a pure approach it might be better to split it up.
+
+![woahhh](images/2025-08-17-screenshot.png)
 

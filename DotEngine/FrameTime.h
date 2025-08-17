@@ -9,8 +9,8 @@
 
 class FrameTime{
 private:
-  const size_t MAX_FRAMES = 1000;
-  const float REFRESH_RATE = 0.5f;
+  const int MAX_FRAMES = 1000;
+  const float REFRESH_RATE = 0.5f ;
 
 
   float frameTimes[1000];

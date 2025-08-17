@@ -57,17 +57,17 @@ build CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o: CXX_COMPILER__DotEngine_un
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
 
-build CMakeFiles/DotEngine.dir/DotEngine/Dot.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/Dot.cpp || cmake_object_order_depends_target_DotEngine
+build CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/DotRenderer.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
-  DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/Dot.cpp.o.d
+  DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o.d
   FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
 
-build CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/DotRenderer.cpp || cmake_object_order_depends_target_DotEngine
+build CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/Dots.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
-  DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o.d
+  DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o.d
   FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
@@ -97,7 +97,7 @@ build CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o: CXX_COMPILER__DotEngine_uns
 #############################################
 # Link the executable bin/DotEngine
 
-build bin/DotEngine: CXX_EXECUTABLE_LINKER__DotEngine_Debug CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o CMakeFiles/DotEngine.dir/DotEngine/Dot.cpp.o CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o
+build bin/DotEngine: CXX_EXECUTABLE_LINKER__DotEngine_Debug CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o
   DEP_FILE = CMakeFiles/DotEngine.dir/link.d
   FLAGS = -g -Wall -Wextra -g -O0
   LINK_FLAGS = -Wl,--dependency-file=CMakeFiles/DotEngine.dir/link.d
