@@ -3,6 +3,7 @@
 #include <memory>
 #include "AABB.h"
 #include "Dots.h"
+#include "SpatialGrid.h"
 
 
 class DotRenderer;
@@ -23,5 +24,6 @@ private:
 
 private:
 	DotRenderer* renderer; // self managed
-  std::unique_ptr<QuadTree> quadTree;
+  // std::unique_ptr<QuadTree> quadTree;
+  SpatialGrid grid;
 };

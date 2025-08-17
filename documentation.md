@@ -134,39 +134,55 @@ Update:
 
 Update:
 I did some profiling with a new SimpleProfiler class i created:
-```
-[SimpleProfiler Report]:
-    QuadTree query: 22.09ms avg (2650.23ms total, 120 calls)
-    filter dead: 0.43ms avg (51.63ms total, 120 calls)
-    alive_indices: 0.00ms avg (0.16ms total, 120 calls)
-    total: 22.52ms avg (2702.58ms total, 120 calls)
-[LOG] LOGGING KVP DEBUG VALUES:
-[LOG] 1% LOW: 44ms
-[LOG] FPS: 21
-[LOG] RenderTime: 8ms
-[LOG] CollisionTime: 22ms
-[LOG] UpdateTime: 0ms
-[LOG] QuadTime: 12ms
-[LOG] DOTS_AMOUNT: 9000
-```
+    [SimpleProfiler Report]:
+        QuadTree query: 22.09ms avg (2650.23ms total, 120 calls)
+        filter dead: 0.43ms avg (51.63ms total, 120 calls)
+        alive_indices: 0.00ms avg (0.16ms total, 120 calls)
+        total: 22.52ms avg (2702.58ms total, 120 calls)
+    [LOG] LOGGING KVP DEBUG VALUES:
+    [LOG] 1% LOW: 44ms
+    [LOG] FPS: 21
+    [LOG] RenderTime: 8ms
+    [LOG] CollisionTime: 22ms
+    [LOG] UpdateTime: 0ms
+    [LOG] QuadTime: 12ms
+    [LOG] DOTS_AMOUNT: 9000
 
 It seems like mose of the time is taken up by that nasty QuadTree query, an a negligable amount by filtering out the dead ones first. I'm next going to
 profile the QuadTree query.
 
 For the query we have the counted stats:
-```
-QuadTree stats: 
-visits=147596 rejects=102962 checks=9848 efficiency=69.8%
 
-MAX_DOTS=32 MAX_LEVELS=4
-```
+    QuadTree stats: 
+    visits=147596 rejects=102962 checks=9848 efficiency=69.8%
+
+    MAX_DOTS=32 MAX_LEVELS=4
+
 Woah, this is really innefficient. We are checking 147k but only actually finding a range we are looking for 70% of the time. Maybe i should try
 another approach with a faster lookup time.
 
+Update:
+Implemented a Spatial Grid. I'm very impressed. Something to know about Quad Trees is that they perform very well for dynamic objects, where size,
+location and velocity all vary. But for uniform objects, distributed evenly with same size and speed, it only creates an overhead. Clocking the new
+implementation gives me this:
+
+        [LOG] LOGGING KVP DEBUG VALUES:
+        [LOG] 1% LOW: 13ms          **(-31ms / -70.45%)**
+        [LOG] FPS: 70               **(+49fps / +333.33%)**
+        [LOG] RenderTime: 8ms       **(n/a)**
+        [LOG] CollisionTime: 3ms    **(-19ms / -86.36%)**
+        [LOG] UpdateTime: 0ms       **(n/a)**
+        [LOG] DOTS_AMOUNT: 9000     **(n/a)**
+
+This is really cool. I'm finally back to where i was before, and along the way I could drop that dang QuadTree.
+
+Next up is some clean-up. I want to hammer in this profiler i created, and clean up some of my code. It should be pretty simple to get profiling data, such as timings and counts, avg and
+screen debug info.
+
 # Cool pics
-Accidentally caused this cool effect while implementing SoA. If you look closely, you can see that
-the QuadTreeNodes contain vast amounts of nodes, yet along the x-x axis there is a more correct
-distribution of QuadTreeNodes. This happened because I incorrectly mistyped a 'y' to a 'x' like so:
+    Accidentally caused this cool effect while implementing SoA. If you look closely, you can see that
+    the QuadTreeNodes contain vast amounts of dots, yet along an axis there is an insane
+    distribution of QuadTreeNodes. This happened because I incorrectly mistyped a 'y' to a 'x' like so:
 
 ```
 if (!bounds.contains(dots.positions_x[index], dots.positions_x[index])) {

@@ -1,11 +1,11 @@
 #include "Game.h"
 #include "Debug.h"
 #include "DotRenderer.h"
-#include "QuadTree.h"
 #include "Settings.h"
 #include "glm/glm.hpp"
 #include <chrono>
 #include <cstdlib>
+#include "SimpleProfiler.h"
 
 Game::Game(DotRenderer *aRenderer) : renderer(aRenderer) {
   dots.init();
@@ -20,12 +20,7 @@ Game::Game(DotRenderer *aRenderer) : renderer(aRenderer) {
   Debug::UpdateKeySettings("UpdateTime", settings);
   Debug::UpdateKeySettings("QuadTime", settings);
 
-  timeSinceUpdate = 0.0f;
-  quadTree = std::make_unique<QuadTree>(
-      AABB(0, 0, Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT));
-
-  // TODO: dots
-  quadTree->rebuild(dots);
+  grid.rebuild(dots);
 }
 
 Game::~Game() {}
@@ -33,13 +28,7 @@ Game::~Game() {}
 void Game::Update(float aDeltaTime) {
   auto start = std::chrono::high_resolution_clock::now();
 
-  // increment rebuild timer
-  timeSinceUpdate += aDeltaTime;
-  if (timeSinceUpdate >= Settings::QUAD_TREE_REFRESH_RATE / 1000.f) {
-    // rebuild and reset timer
-    quadTree->rebuild(dots);
-    timeSinceUpdate = 0.0f;
-  }
+  grid.rebuild(dots);
   auto QuadTime_ch = std::chrono::high_resolution_clock::now();
 
   // Update all the dots positions
@@ -54,11 +43,6 @@ void Game::Update(float aDeltaTime) {
   dots.renderAll(renderer);
 
   // Render all QuadTree bounds
-  // std::vector<AABB> allBounds = quadTree->getAllBounds();
-  // renderer->SetDrawColor(100, 100, 100, 20);
-  // for (auto &bound : allBounds) {
-  //   renderer->DrawRect(bound.minX, bound.minY, bound.maxX, bound.maxY);
-  // }
   auto RenderTime_ch = std::chrono::high_resolution_clock::now();
 
   // ####################
@@ -115,31 +99,31 @@ void Game::processCollisions() {
   for (size_t i1 : alive_indices) {
     // create query bounds
     float radius = dots.radii[i1] * 1.5f;
-    float pos_x = dots.positions_x[i1];
-    float pos_y = dots.positions_y[i1];
-    AABB queryBounds{
-      pos_x - radius, 
-      pos_y - radius, 
-      pos_x + radius,
-      pos_y + radius
-    };
+    // float pos_x = dots.positions_x[i1];
+    // float pos_y = dots.positions_y[i1];
+    // AABB queryBounds{
+    //   pos_x - radius, 
+    //   pos_y - radius, 
+    //   pos_x + radius,
+    //   pos_y + radius
+    // };
 
     // perform query and callback to collision func
-    quadTree->query(queryBounds, [&](size_t i2) {
-      if (i1 != i2 && i2 > i1 && dots.radii[i2] < Settings::DOT_RADIUS + 3) {
-        collideDots(i1, i2);
+    // quadTree->query(queryBounds, [&](size_t i2) {
+    //   if (i1 != i2 && i2 > i1 && dots.radii[i2] < Settings::DOT_RADIUS + 3) {
+    //     collideDots(i1, i2);
+    //   }
+    // });
+    grid.queryNeighbours(
+      dots.positions_x[i1],
+      dots.positions_y[i1],
+      radius,
+      [&](size_t i2){
+        if(i1 != i2 && i2 > i1 && dots.radii[i2] < Dots::RADIUS + 3){
+          collideDots(i1, i2);
+        }
       }
-    });
-  }
-
-  static int stat_frame = 0;
-  if(++stat_frame % 120 == 0){
-    size_t visits = 0, rejected = 0, checks = 0;
-    quadTree->getRoot()->collectStats(visits, rejected, checks);
-    printf("\nQuadTree stats: \nvisits=%zu rejects=%zu checks=%zu efficiency=%.1f%%\n",
-           visits, rejected, checks,
-           100.0 * rejected / visits);
-    quadTree->getRoot()->resetStats();
+    );
   }
 }
 
