@@ -123,6 +123,8 @@ int main() {
     // std::cin.get();
   }
 
+  Debug::OutputScreenFields();
+
   delete game;
   delete renderer;
   TTF_CloseFont(font);

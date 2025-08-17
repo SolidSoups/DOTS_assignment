@@ -90,6 +90,17 @@ void Debug::UpdateKeySettings(std::string key, KeySettings settings){
   Instance->keySettingsMap[key] = settings;
 }
 
+void Debug::OutputScreenFields(){
+  if(Instance == nullptr){
+    return;
+  }
+
+  Log("LOGGING KVP DEBUG VALUES:");
+  for(auto kvp : Instance->debugValuesMap){
+    Log(kvp.second);
+  }
+}
+
 // console logging
 
 void Debug::Log(const std::string &msg) {

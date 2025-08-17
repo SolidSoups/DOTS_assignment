@@ -39,6 +39,8 @@ private:
 public: // screen debug
   static void UpdateScreenField(std::string key, std::string value);
   static void UpdateKeySettings(std::string key, KeySettings settings);
+
+  static void OutputScreenFields();
 private:
   std::unordered_map<std::string, std::string> debugValuesMap;
   std::unordered_map<std::string, KeySettings> keySettingsMap;
