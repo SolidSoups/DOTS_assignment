@@ -4,7 +4,7 @@ namespace Settings{
   constexpr int SCREEN_WIDTH = 1400;
   constexpr int SCREEN_HEIGHT = 800;
 
-  constexpr int QUAD_TREE_MILLIS_REFRESH_TIME = 4; 
+  constexpr int QUAD_TREE_REFRESH_RATE = 10; 
   constexpr int QUAD_TREE_MAX_OCCUPANTS = 48;
   constexpr int QUAD_TREE_MAX_DEPTH = 8;
 

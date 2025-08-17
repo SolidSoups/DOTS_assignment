@@ -2,30 +2,17 @@
 #include "Debug.h"
 #include "Dot.h"
 #include "DotRenderer.h"
-#include "Settings.h"
 #include "QuadTree.h"
+#include "Settings.h"
 #include "glm/glm.hpp"
-#include <cstdlib>
 #include <chrono>
+#include <cstdlib>
 
 Game::Game(DotRenderer *aRenderer)
-    : quadTree(nullptr), renderer(aRenderer),
-      dot_amount(Settings::DOTS_AMOUNT),
-      screen_width(Settings::SCREEN_WIDTH),
-      screen_height(Settings::SCREEN_HEIGHT),
-      quad_refresh_rate_millis(Settings::QUAD_TREE_MILLIS_REFRESH_TIME),
-      default_bounds(0.0f, 0.0f, screen_width, screen_height) 
+    : renderer(aRenderer)
 {
-  for (size_t i = 0; i < dot_amount; i++) {
-    int diry = std::rand() % 2;
-    int dirx = std::rand() % 2;
-
-    dirx = -1 ? dirx > 1 : dirx;
-    diry = -1 ? diry > 1 : diry;
-
-    Dot *d =
-        new Dot({std::rand() % screen_width, std::rand() % screen_height});
-
+  for (size_t i = 0; i < Settings::DOTS_AMOUNT; i++) {
+    Dot *d = new Dot({std::rand() % Settings::SCREEN_WIDTH, std::rand() % Settings::SCREEN_HEIGHT});
     dots.push_back(d);
   }
   Debug::Log("GAME: Size of dot: " + std::to_string(sizeof(*dots[0])));
@@ -39,7 +26,12 @@ Game::Game(DotRenderer *aRenderer)
   Debug::UpdateKeySettings("QuadTime", settings);
 
   timeSinceUpdate = 0.0f;
-  createQuadTree();
+  quadTree = std::make_unique<QuadTree>(
+      AABB(0, 0, Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT));
+
+  for (Dot *d : dots) {
+    quadTree->insert(d);
+  }
 }
 
 Game::~Game() { CleanUp(); }
@@ -50,12 +42,12 @@ void Game::Update(float aDeltaTime) {
   // increment quadTreeTime
   timeSinceUpdate += aDeltaTime;
   // reset and create quadTree
-  if (timeSinceUpdate >= quad_refresh_rate_millis / 1000.f) {
-    createQuadTree(); // don't create, update!
-    timeSinceUpdate = 0.0f;
+  if (timeSinceUpdate >= Settings::QUAD_TREE_REFRESH_RATE / 1000.f) {
+    quadTree->rebuild(dots);
   }
+    timeSinceUpdate = 0.0f;
+  // quadTree->rebuild(dots);
   auto QuadTime_ch = std::chrono::high_resolution_clock::now();
-
 
   for (Dot *d : dots) {
     d->Update(aDeltaTime);
@@ -67,28 +59,49 @@ void Game::Update(float aDeltaTime) {
 
   for (Dot *d : dots) {
     if (d != nullptr) {
-      d->Render(renderer, aDeltaTime);
+      d->Render(renderer);
     }
   }
+
+  // render bounds
+  std::vector<AABB> allBounds = quadTree->getAllBounds();
+  renderer->SetDrawColor(100, 100, 100, 20);
+  for(auto& bound : allBounds){
+    renderer->DrawRect(bound.minX, bound.minY, bound.maxX, bound.maxY);
+  }
+
   auto RenderTime_ch = std::chrono::high_resolution_clock::now();
 
   // DEBUG INFORMATION
 
   // Quad Time info
-  int QuadTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(QuadTime_ch - start).count();
-  std::string QuadTime_str = "QuadTime: " + std::to_string(QuadTime_millis) + "ms";
+  int QuadTime_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(QuadTime_ch - start)
+          .count();
+  std::string QuadTime_str =
+      "QuadTime: " + std::to_string(QuadTime_millis) + "ms";
   Debug::UpdateScreenField("QuadTime", QuadTime_str);
   // Update time info
-  int UpdateTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(UpdateTime_ch - QuadTime_ch).count();
-  std::string UpdateTime_str = "UpdateTime: " + std::to_string(UpdateTime_millis) + "ms";
+  int UpdateTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              UpdateTime_ch - QuadTime_ch)
+                              .count();
+  std::string UpdateTime_str =
+      "UpdateTime: " + std::to_string(UpdateTime_millis) + "ms";
   Debug::UpdateScreenField("UpdateTime", UpdateTime_str);
   // Collision time info
-  int CollisionTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(CollisionTime_ch - UpdateTime_ch).count();
-  std::string CollisionTime_str = "CollisionTime: " + std::to_string(CollisionTime_millis) + "ms";
+  int CollisionTime_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(CollisionTime_ch -
+                                                            UpdateTime_ch)
+          .count();
+  std::string CollisionTime_str =
+      "CollisionTime: " + std::to_string(CollisionTime_millis) + "ms";
   Debug::UpdateScreenField("CollisionTime", CollisionTime_str);
   // Render time info
-  int RenderTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(RenderTime_ch - CollisionTime_ch).count();
-  std::string RenderTime_str = "RenderTime: " + std::to_string(RenderTime_millis) + "ms";
+  int RenderTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              RenderTime_ch - CollisionTime_ch)
+                              .count();
+  std::string RenderTime_str =
+      "RenderTime: " + std::to_string(RenderTime_millis) + "ms";
   Debug::UpdateScreenField("RenderTime", RenderTime_str);
 }
 
@@ -98,20 +111,24 @@ void Game::processCollisions() {
       continue;
 
     if (d1->radius >= Settings::DOT_RADIUS + 3) {
-      d1->Init({std::rand() % screen_width, std::rand() % screen_height});
-      quadTree->insert(d1);
+      d1->Init({std::rand() % Settings::SCREEN_WIDTH, std::rand() % Settings::SCREEN_HEIGHT});
+      // quadTree->insert(d1);
       continue;
     }
 
-    float queryRadius = d1->radius * 1.5f;
-    AABB queryBounds{d1->position.x - queryRadius, d1->position.y - queryRadius,
-                     queryRadius * 2.f, queryRadius * 2.f};
-
-    quadTree->ForEachQueryArea(queryBounds, [&](Dot* d2){
-      if(d1 != d2 && d2 > d1){
+    float radius = d1->radius * 1.5f;
+    AABB queryBounds{d1->position.x - radius, d1->position.y - radius,
+                     d1->position.x + radius, d1->position.y + radius};
+    quadTree->query(queryBounds, [&](Dot *d2) {
+      if (d1 != d2 && d2 > d1 && d2->radius < Settings::DOT_RADIUS + 3) {
         collideDots(d1, d2);
       }
     });
+    // for(Dot* d2 : dots){
+    //   if (d1 != d2 && d2 > d1) {
+    //     collideDots(d1, d2);
+    //   }
+    // }
   }
 }
 
@@ -136,31 +153,22 @@ void Game::collideDots(Dot *d1, Dot *d2) {
 
     d1->radius++;
     d2->radius++;
-    // Debug::Log("[GAME] Collision!");
+    Debug::Log("[GAME] Collision!");
   }
 }
 
 void Game::createQuadTree() {
-  if (quadTree != nullptr) {
-    delete quadTree;
-    quadTree = nullptr;
-  }
+  quadTree = std::make_unique<QuadTree>(
+      AABB(0, 0, Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT));
 
-  quadTree = new QuadTree(default_bounds);
   for (Dot *d : dots) {
     quadTree->insert(d);
   }
 }
 
 void Game::CleanUp() {
-  // delete tree
-  if (quadTree) {
-    delete quadTree;
-    quadTree = nullptr;
-  }
-
   // delete dots
-  for (int i = 0; i < dots.size(); ++i) {
+  for (size_t i = 0; i < dots.size(); ++i) {
     delete dots[i];
     dots[i] = nullptr;
   }

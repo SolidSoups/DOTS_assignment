@@ -93,6 +93,15 @@ void DotRenderer::DrawFilledCircle(int centerX, int centerY, int radius)
 	}
 }
 
+void DotRenderer::DrawRect(float minX, float minY, float maxX, float maxY){
+  if(!m_sdlRenderer) return;
+
+  SDL_RenderLine(m_sdlRenderer, minX, minY, maxX, minY); // top
+  SDL_RenderLine(m_sdlRenderer, maxX, minY, maxX, maxY); // right
+  SDL_RenderLine(m_sdlRenderer, minX, maxY, maxX, maxY); // bottom
+  SDL_RenderLine(m_sdlRenderer, minX, minY, minX, maxY); // top
+}
+
 void DotRenderer::RenderTexture(SDL_Texture* texture, const SDL_FRect* srcRect, const SDL_FRect* dstRect)
 {
 	if (m_sdlRenderer && texture)

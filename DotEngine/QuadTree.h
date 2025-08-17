@@ -1,47 +1,198 @@
 #pragma once
+
+// includes
 #include "AABB.h"
-#include <vector>
 #include "Dot.h"
 
-class Dot;
+// std
+#include <memory>
+#include <vector>
 
-class QuadTree {
+class QuadTreeNode {
 public:
-  // constructor
-  QuadTree(const AABB &bounds, int current_depth = 1);
-  ~QuadTree();
+  static const int MAX_OBJECTS = 8;
+  static const int MAX_LEVELS = 9;
 
-  const int max_depth;
-  const int max_occ;
-
-  // members
-  std::vector<Dot *> dots;
+private:
+  int level;
   AABB bounds;
-  bool divided = false;
-  int depth = 0;
+  std::vector<Dot *> dots;
+  bool divided;
 
-  // methods
-  bool insert(Dot *dot);
-  void subdivide();
-  bool query(const AABB &range, std::vector<Dot *> &found) const;
+  // Children: [0] = NW, [1] = NE, [2] = SW, [3] = SE
+  std::unique_ptr<QuadTreeNode> branches[4];
 
+public:
+  QuadTreeNode(int level, const AABB &bounds)
+      : level(level), bounds(bounds), divided(false) {
+    dots.reserve(MAX_OBJECTS + 1);
+  }
+
+  ~QuadTreeNode() = default; // TODO: what is this
+
+  bool insert(Dot *dot) {
+    // if dot doesnt fit inside this node's bounds, ignore it
+    if (!bounds.contains(dot->position.x, dot->position.y)) {
+      return false;
+    }
+
+    // if we have room and aren't divided, add it here
+    if (!divided && (level == MAX_LEVELS || dots.size() <= MAX_OBJECTS)) {
+      dots.push_back(dot);
+      return true;
+    }
+
+    // At this point we need to subdivide
+    if (!divided) {
+      subdivide();
+    }
+
+    // Try to insert into children
+    for (size_t i = 0; i < 4; i++) {
+      if(branches[i]->insert(dot))
+        break;
+    }
+
+    return true;
+  }
+
+  // Query dots in a given range, now with zero allocations
   template <typename Callback>
-  void ForEachQueryArea(const AABB &range, Callback callback) {
-    if (!bounds.overlaps(range))
+  void query(const AABB &range, Callback callback) const {
+    // Early escape if we don't overlap the range
+    if (!bounds.overlaps(range)) {
       return;
+    }
 
+    // If not divided, chekk all dots in this node
     if (!divided) {
       for (Dot *dot : dots) {
-          callback(dot);
+        callback(dot); // its faster not to check range here (+10fps)
       }
     } else {
-      if (branches[0]) branches[0]->ForEachQueryArea(range, callback);
-      if (branches[1]) branches[1]->ForEachQueryArea(range, callback);
-      if (branches[2]) branches[2]->ForEachQueryArea(range, callback);
-      if (branches[3]) branches[3]->ForEachQueryArea(range, callback);
+      // Query all children
+      for (int i = 0; i < 4; i++) {
+        if (branches[i]) {
+          branches[i]->query(range, callback);
+        }
+      }
     }
   }
 
-  // chill quadrants zZzz
-  QuadTree *branches[4];
+  void clear() {
+    dots.clear();
+    divided = false;
+    for (int i = 0; i < 4; i++) {
+      branches[i].reset();
+    }
+  }
+
+  int size() const {
+    int count = dots.size();
+    if (divided) {
+      for (int i = 0; i < 4; i++) {
+        if (branches[i]) {
+          count += branches[i]->size();
+        }
+      }
+    }
+    return count;
+  }
+
+  const AABB &getBounds() const { return bounds; }
+
+  void getAllBounds(std::vector<AABB>& allBounds) const {
+    if(!divided){
+      allBounds.push_back(bounds);
+    }
+    else{
+      for(int i=0; i<4; i++){
+        if(branches[i]){
+          branches[i]->getAllBounds(allBounds);
+        }
+      }
+    }
+  }
+
+private:
+  void subdivide() {
+    if (divided || level >= MAX_LEVELS) {
+      return;
+    }
+
+    float cX = bounds.getCenterX();
+    float cY = bounds.getCenterY();
+
+    // Create four children
+    branches[0] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(bounds.minX, bounds.minY, cX, cY));
+    branches[1] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(cX, bounds.minY, bounds.maxX, cY));
+    branches[2] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(bounds.minX, cY, cX, bounds.maxY));
+    branches[3] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(cX, cY, bounds.maxX, bounds.maxY));
+
+    divided = true;
+
+    // Redistribute existing dots to children
+    std::vector<Dot *> oldDots = std::move(dots);
+    dots.clear();
+
+    for (Dot *dot : oldDots) {
+      // Try to insert into children
+      for (size_t i = 0; i < 4; i++) {
+        branches[i]->insert(dot);
+      }
+    }
+  }
+};
+
+
+
+class QuadTree {
+private:
+  std::unique_ptr<QuadTreeNode> root;
+  AABB worldBounds;
+
+public:
+  QuadTree(const AABB &bounds) : worldBounds(bounds) {
+    root = std::make_unique<QuadTreeNode>(0, bounds);
+  }
+
+  ~QuadTree() = default;
+
+  void insert(Dot *dot) {
+    if (root) {
+      root->insert(dot);
+    }
+  }
+
+  template <typename Callback>
+  void query(const AABB &range, Callback callback) const {
+    if (root) {
+      root->query(range, callback);
+    }
+  }
+
+  void clear() { root = std::make_unique<QuadTreeNode>(0, worldBounds); }
+
+  int size() const { return root ? root->size() : 0; }
+
+  const AABB &getBounds() const { return worldBounds; }
+
+  void rebuild(const std::vector<Dot *> &dots) {
+    clear();
+    for (Dot *dot : dots) {
+      insert(dot);
+    }
+  }
+
+  std::vector<AABB> getAllBounds(){
+    if(root){
+      std::vector<AABB> bounds; 
+      root->getAllBounds(bounds);
+      return bounds;
+    }
+  }
 };

@@ -1,26 +1,41 @@
 #pragma once
-#include "glm/glm.hpp"
+
+#include <algorithm>
 
 struct AABB{
-  AABB(float x, float y, float w, float h) : pos{x, y}, size{w, h} {}
-  AABB(const AABB& other) : pos(other.pos), size(other.size){}
-  glm::vec2 pos; // top-left corner
-  glm::vec2 size; // full size to bottom-left corner
+  float minX, minY, maxX, maxY;
 
-  bool contains(const glm::vec2& point) const{
-    return !(
-      point.x < pos.x ||
-      point.y < pos.y ||
-      point.x > pos.x + size.x ||
-      point.y > pos.y + size.y
-    );
-  };
-  
+  AABB() = default;
+  AABB(float minX, float minY, float maxX, float maxY) 
+    : minX(minX), minY(minY), maxX(maxX), maxY(maxY) {}
+
   bool overlaps(const AABB& other) const{
-    return (
-      (other.pos.x <= pos.x + size.x && other.pos.x + other.size.x >= pos.x) &&
-      (other.pos.y <= pos.y + size.y && other.pos.y + other.size.y >= pos.y)
-    );
+    return !(maxX < other.minX || other.maxX < minX ||
+             maxY < other.minY || other.maxY < minY);
   }
+
+  bool contains(float x, float y) const{
+    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  }
+  
+  bool containsCircle(float x, float y, float radius) const{
+    return x - radius >= minX && x + radius <= maxX &&
+           y - radius >= minX && y + radius <= minX;
+  }
+
+  bool overlapsCircle(float x, float y, float radius) const{
+    float closestX = std::max(minX, std::min(x, maxX));
+    float closestY = std::max(minY, std::min(y, maxY));
+
+    float dx = x - closestX;
+    float dy = y - closestY;
+
+    return (dx * dx + dy * dy) <= (radius * radius);
+  }
+
+  float getCenterX() const { return (minX + maxX) * 0.5f; }
+  float getCenterY() const { return (minY + maxY) * 0.5f; }
+  float getWidth() const { return maxX - minX; }
+  float getHeight() const { return maxY - minY; }
 };
 

@@ -43,7 +43,7 @@ void Dot::Update(float dt){
   }
 }
 
-void Dot::Render(DotRenderer *aRenderer, float dt) {
+void Dot::Render(DotRenderer *aRenderer) {
   const float foo = 0.5f * 255.0f;
 
   float redColor = foo + (radius - Settings::DOT_RADIUS) * foo / 3.f;

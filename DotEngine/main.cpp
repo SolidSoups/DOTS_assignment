@@ -1,7 +1,7 @@
 #include "DotRenderer.h"
-#include "Settings.h"
 #include "FrameTime.h"
 #include "Game.h"
+#include "Settings.h"
 #include <Debug.h>
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
@@ -9,10 +9,10 @@
 #include <iostream>
 #include <string>
 
-int main(int argc, char *args[]) {
+int main() {
   Debug::Log("PROGRAM START");
 
-  if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
     const char *err = SDL_GetError();
     Debug::LogError(err);
     return 1;
@@ -26,8 +26,8 @@ int main(int argc, char *args[]) {
   }
 
   SDL_Window *window =
-      SDL_CreateWindow("Game", Settings::SCREEN_WIDTH,
-                       Settings::SCREEN_HEIGHT, SDL_WINDOW_OPENGL);
+      SDL_CreateWindow("Game", Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT,
+                       SDL_WINDOW_OPENGL);
 
   DotRenderer *renderer = new DotRenderer(window);
   if (!renderer->GetSDLRenderer()) {
@@ -119,6 +119,8 @@ int main(int argc, char *args[]) {
     debug->Render();
 
     renderer->Present();
+
+    // std::cin.get();
   }
 
   delete game;

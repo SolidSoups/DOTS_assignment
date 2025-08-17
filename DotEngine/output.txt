@@ -1,0 +1,1063 @@
+=== ./Debug.h ===
+#pragma once
+#include <string>
+#include <unordered_map>
+#include <vector>
+#include "SDL3/SDL_pixels.h"
+
+#define DEBUG_MODE_ON
+
+class DotRenderer;
+class SDL_Texture;
+struct TTF_Font;
+
+
+struct KeySettings{
+  SDL_Color textColor;
+};
+
+struct DebugTextInfoItem{
+  SDL_Texture* texture;
+  int w;
+  int h;
+};
+
+// TODO: implement a save file for logs? unecessary for now
+class Debug {
+public:
+  Debug(DotRenderer *renderer, TTF_Font* font);
+  static Debug* GetInstance();
+  static void DeleteInstance();
+
+  ~Debug();
+  void Render();
+
+private:
+  static Debug* Instance;
+  DotRenderer *_renderer;
+  TTF_Font* m_font;
+
+public: // screen debug
+  static void UpdateScreenField(std::string key, std::string value);
+  static void UpdateKeySettings(std::string key, KeySettings settings);
+private:
+  std::unordered_map<std::string, std::string> debugValuesMap;
+  std::unordered_map<std::string, KeySettings> keySettingsMap;
+  std::unordered_map<std::string, DebugTextInfoItem> textDebugInfoMap;
+  std::vector<std::string> keysOrder;
+
+public: // console logging functions
+  static void Log(const std::string &msg);
+  static void LogWarning(const std::string &msg);
+  static void LogError(const std::string &msg);
+};
+
+=== ./Debug.cpp ===
+#include "Debug.h"
+#include "DotRenderer.h"
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+
+// std
+#include <iostream>
+
+Debug* Debug::Instance{nullptr};
+
+Debug* Debug::GetInstance(){
+  return Instance;
+}
+
+// initialization
+Debug::Debug(DotRenderer *renderer, TTF_Font *font)
+    : _renderer(renderer), m_font(font) {
+  if(Instance == nullptr){
+    Instance = this;
+    Log("[DEBUG] Set Instance");
+  }
+}
+
+Debug::~Debug(){
+  for(const auto& item_kvp : textDebugInfoMap){
+    SDL_DestroyTexture(item_kvp.second.texture);
+  } 
+  delete Instance;
+}
+
+// screen logging
+void Debug::Render() {
+  const float TextSpacing = 10.f;
+  float incrementalHeight = 0.f;
+  for(int i=0; i<keysOrder.size(); ++i){
+    auto& item = textDebugInfoMap[keysOrder[i]];
+    SDL_FRect renderQuad = {0, incrementalHeight, (float)item.w,
+      (float)item.h};
+    _renderer->RenderTexture(item.texture, nullptr, &renderQuad);
+    incrementalHeight += (float)item.h + TextSpacing;
+  }
+}
+
+void Debug::UpdateScreenField(std::string key, std::string value) {
+  if(Instance == nullptr){
+    LogError("[DEBUG] Instance not created");
+    return;
+  }
+
+  auto [iterator, bInserted] = Instance->debugValuesMap.insert({key, value});
+
+  if (!bInserted){
+    // the key already exists
+    if(iterator->second != value)
+      // the value has changed, update it
+      iterator->second = value;
+    else{
+      // the value is the same, 
+      // no need to generate a new texture
+      return;
+    }
+  }
+  else{
+    // it's a new item, keep track of order
+    Instance->keysOrder.push_back(key);
+  }
+
+  // update the texture
+  SDL_Color textColor = {255, 255, 255, 255};
+  if(Instance->keySettingsMap.contains(key)){
+    textColor = Instance->keySettingsMap[key].textColor;
+  }
+
+
+  SDL_Surface *textSurface =
+      TTF_RenderText_Solid(Instance->m_font, value.c_str(), 0, textColor);
+  if (textSurface != nullptr) {
+    SDL_Texture *textTexture =
+        SDL_CreateTextureFromSurface(Instance->_renderer->GetSDLRenderer(), textSurface);
+    // update text info map
+    Instance->textDebugInfoMap[key] = {textTexture, textSurface->w, textSurface->h};
+  }
+  // TODO: delete surface
+  SDL_DestroySurface(textSurface);
+}
+
+void Debug::UpdateKeySettings(std::string key, KeySettings settings){
+  if(Instance == nullptr)
+    return;
+  Instance->keySettingsMap[key] = settings;
+}
+
+// console logging
+
+void Debug::Log(const std::string &msg) {
+#ifdef DEBUG_MODE_ON
+  std::cout << "[LOG] " << msg << "\n";
+#endif
+}
+
+void Debug::LogWarning(const std::string &msg) {
+#ifdef DEBUG_MODE_ON
+  std::cout << "[WARNING] " << msg << "\n";
+#endif
+}
+
+void Debug::LogError(const std::string &msg) {
+#ifdef DEBUG_MODE_ON
+  std::cout << "[ERROR] " << msg << "\n";
+#endif
+}
+
+=== ./DotRenderer.h ===
+#pragma once
+#include <SDL3/SDL.h>
+#include <string>
+#include <vector>
+
+class DotRenderer {
+public:
+  DotRenderer(SDL_Window *window);
+
+  ~DotRenderer();
+
+  SDL_Renderer *GetSDLRenderer() const { return m_sdlRenderer; }
+
+  void SetDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+  void Clear();
+  void Present();
+
+  void DrawCircle(int centerX, int centerY, int radius);
+  void DrawRect(float mx, float my, float Mx, float My);
+  void DrawFilledCircle(int centerX, int centerY, int radius);
+  void RenderTexture(SDL_Texture *texture, const SDL_FRect *srcRect,
+                     const SDL_FRect *dstRect);
+
+private:
+  SDL_Renderer *m_sdlRenderer;
+
+  void DrawPoint(int x, int y);
+
+  DotRenderer(const DotRenderer &) = delete;
+  DotRenderer &operator=(const DotRenderer &) = delete;
+};
+
+=== ./DotRenderer.cpp ===
+#include "DotRenderer.h"
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL.h>
+#include <cmath> 
+
+DotRenderer::DotRenderer(SDL_Window* window) : m_sdlRenderer(nullptr)
+{
+	m_sdlRenderer = SDL_CreateRenderer(window, nullptr);
+	if (!m_sdlRenderer) return;
+}
+
+DotRenderer::~DotRenderer()
+{
+	if (m_sdlRenderer)
+	{
+		SDL_DestroyRenderer(m_sdlRenderer);
+		m_sdlRenderer = nullptr;
+	}
+}
+
+void DotRenderer::SetDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+{
+	if (m_sdlRenderer)
+	{
+		SDL_SetRenderDrawColor(m_sdlRenderer, r, g, b, a);
+	}
+}
+
+void DotRenderer::Clear()
+{
+	if (m_sdlRenderer)
+	{
+		SDL_RenderClear(m_sdlRenderer);
+	}
+}
+
+void DotRenderer::Present()
+{
+	if (m_sdlRenderer)
+	{
+		SDL_RenderPresent(m_sdlRenderer);
+	}
+}
+
+void DotRenderer::DrawPoint(int x, int y)
+{
+	if (m_sdlRenderer)
+	{
+		SDL_RenderPoint(m_sdlRenderer, x, y);
+	}
+}
+
+void DotRenderer::DrawCircle(int centerX, int centerY, int radius)
+{
+	if (!m_sdlRenderer) return;
+
+	int x = radius;
+	int y = 0;
+	int err = 0;
+
+	while (x >= y) 
+	{
+		DrawPoint(centerX + x, centerY + y);
+		DrawPoint(centerX + y, centerY + x);
+		DrawPoint(centerX - y, centerY + x);
+		DrawPoint(centerX - x, centerY + y);
+		DrawPoint(centerX - x, centerY - y);
+		DrawPoint(centerX - y, centerY - x);
+		DrawPoint(centerX + y, centerY - x);
+		DrawPoint(centerX + x, centerY - y);
+
+		if (err <= 0) 
+		{
+			y++;
+			err += 2 * y + 1;
+		}
+		if (err > 0) 
+		{
+			x--;
+			err -= 2 * x + 1;
+		}
+	}
+}
+
+void DotRenderer::DrawFilledCircle(int centerX, int centerY, int radius)
+{
+	if (!m_sdlRenderer) return;
+
+	for (int y = -radius; y <= radius; y++) 
+	{
+		int x = static_cast<int>(std::sqrt(radius * radius - y * y));
+		SDL_RenderLine(m_sdlRenderer, centerX - x, centerY + y, centerX + x, centerY + y);
+	}
+}
+
+void DotRenderer::DrawRect(float minX, float minY, float maxX, float maxY){
+  if(!m_sdlRenderer) return;
+
+  SDL_RenderLine(m_sdlRenderer, minX, minY, maxX, minY); // top
+  SDL_RenderLine(m_sdlRenderer, maxX, minY, maxX, maxY); // right
+  SDL_RenderLine(m_sdlRenderer, minX, maxY, maxX, maxY); // bottom
+  SDL_RenderLine(m_sdlRenderer, minX, minY, minX, maxY); // top
+}
+
+void DotRenderer::RenderTexture(SDL_Texture* texture, const SDL_FRect* srcRect, const SDL_FRect* dstRect)
+{
+	if (m_sdlRenderer && texture)
+	{
+		SDL_RenderTexture(m_sdlRenderer, texture, srcRect, dstRect);
+	}
+}
+
+
+
+
+
+=== ./FrameTime.h ===
+#pragma once
+#include "Debug.h"
+#include <cstring>
+#include <algorithm>
+#include <string>
+#include <iostream>
+#include <vector>
+
+
+class FrameTime{
+private:
+  const size_t MAX_FRAMES = 1000;
+  const float REFRESH_RATE = 0.5f;
+
+
+  float frameTimes[1000];
+  std::vector<float> frameTimesNew;
+  int currentIndex = 0;
+  float acc = 0.f;
+
+public: 
+  float onepercentlow = 0.0f;
+  FrameTime() : currentIndex(0) {
+    memset(frameTimes, 0, sizeof(float)*MAX_FRAMES);
+  }
+
+  void Update(float dt){
+    frameTimes[currentIndex] = dt * 1000;
+    frameTimesNew.push_back(dt*1000);
+    currentIndex = (currentIndex + 1) % MAX_FRAMES;
+
+    if(frameTimesNew.size() >= MAX_FRAMES)
+      frameTimesNew.erase(frameTimesNew.begin());
+
+    acc += dt;
+    if(acc >= REFRESH_RATE){
+      acc = 0.f;
+      Update1PercentLows();
+    }
+  }
+
+private:
+  void Update1PercentLows(){
+
+    std::vector<float> tempVct = frameTimesNew;
+    std::sort(tempVct.begin(), tempVct.end());
+
+    int worst_count = frameTimesNew.size() * 0.1f;
+    float totalWorst = 0.0f;
+    for(int i=0; i<worst_count; ++i){
+      totalWorst += tempVct[i];
+    }
+
+    float avgWorst = totalWorst / worst_count;
+    onepercentlow = avgWorst > 0.0f ? avgWorst : 0.0f;
+  }
+};
+
+=== ./Game.h ===
+#pragma once
+#include <vector>
+#include <memory>
+#include "AABB.h"
+
+class DotRenderer;
+class QuadTree;
+class Dot;
+
+class Game
+{
+public:
+	Game(DotRenderer* aRenderer);
+  ~Game();
+	void Update(float aDeltaTime);
+  void processCollisions();
+  void collideDots(Dot* d1, Dot* d2);
+	void CleanUp();
+  void createQuadTree();
+private:
+  float timeSinceUpdate;
+  std::vector<Dot*> dots;
+
+private:
+	DotRenderer* renderer; // self managed
+  std::unique_ptr<QuadTree> quadTree;
+};
+
+=== ./Settings.h ===
+#pragma once
+
+namespace Settings{
+  constexpr int SCREEN_WIDTH = 1400;
+  constexpr int SCREEN_HEIGHT = 800;
+
+  constexpr int QUAD_TREE_REFRESH_RATE = 4; 
+  constexpr int QUAD_TREE_MAX_OCCUPANTS = 48;
+  constexpr int QUAD_TREE_MAX_DEPTH = 8;
+
+  constexpr int DOTS_AMOUNT = 1000;
+  constexpr int DOT_RADIUS = 4;
+  constexpr float DOT_VELOCITY = 50;
+};
+
+=== ./Dot.h ===
+#pragma once
+#include "glm/glm.hpp"
+#include <cstdint>
+#include <memory>
+
+class DotRenderer;
+class QuadTree;
+
+class Dot // 32B
+{
+public:
+
+	Dot(glm::vec2 aPosition);
+  void Init(glm::vec2 aPosition);
+  void Update(float dt);
+  void Render(DotRenderer* aRenderer);
+
+	glm::vec2 position;   // 8B
+	glm::vec2 velocity;   // 8B
+  
+  std::shared_ptr<QuadTree> node; // 8B
+  size_t nodeIndex;               // 4B
+  
+  // pack at end to avoid misalignment, would be 40B otherwise
+  uint16_t radius;     // 2B
+};
+
+=== ./Dot.cpp ===
+#include "Dot.h"
+#include "DotRenderer.h"
+#include "Game.h"
+#include <ctime>
+#include <glm/gtc/constants.hpp>
+#include <random>
+#include "Settings.h"
+
+Dot::Dot(glm::vec2 aPosition) {
+  Init(aPosition);
+}
+
+// creating new instances every frame, huh
+void Dot::Init(glm::vec2 aPosition){
+  position = aPosition;
+  radius = Settings::DOT_RADIUS; // constexpr, no cache miss
+
+  thread_local static std::mt19937 rng(static_cast<unsigned int>(time(nullptr)));
+  thread_local static std::uniform_real_distribution<float> angleDist(0.0f, 2.0f * glm::pi<float>());
+
+  float angle = angleDist(rng);
+  velocity = glm::vec2(std::cos(angle), std::sin(angle));
+}
+
+void Dot::Update(float dt){
+  position += velocity * Settings::DOT_VELOCITY * dt;
+
+  // haven't checked this shit, but maybe not during a render call?
+  if (position.x - radius < 0.0f) {
+    position.x = radius;
+    velocity.x *= -1;
+  } else if (position.x + radius > Settings::SCREEN_WIDTH) {
+    position.x = Settings::SCREEN_HEIGHT - radius;
+    velocity.x *= -1;
+  }
+
+  if (position.y - radius < 0.0f) {
+    position.y = radius;
+    velocity.y *= -1;
+  } else if (position.y + radius > Settings::SCREEN_HEIGHT) {
+    position.y = Settings::SCREEN_HEIGHT - radius;
+    velocity.y *= -1;
+  }
+}
+
+void Dot::Render(DotRenderer *aRenderer) {
+  const float foo = 0.5f * 255.0f;
+
+  float redColor = foo + (radius - Settings::DOT_RADIUS) * foo / 3.f;
+  float greenColor = foo;
+  float blueColor = foo;
+
+  aRenderer->SetDrawColor(redColor, greenColor, blueColor, 255);
+
+  aRenderer->DrawFilledCircle(position.x, position.y, radius);
+}
+
+=== ./AABB.h ===
+#pragma once
+
+#include <algorithm>
+
+struct AABB{
+  float minX, minY, maxX, maxY;
+
+  AABB() = default;
+  AABB(float minX, float minY, float maxX, float maxY) 
+    : minX(minX), minY(minY), maxX(maxX), maxY(maxY) {}
+
+  bool overlaps(const AABB& other) const{
+    return !(maxX < other.minX || other.maxX < minX ||
+             maxY < other.minY || other.maxX < minY);
+  }
+
+  bool contains(float x, float y) const{
+    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  }
+  
+  bool containsCircle(float x, float y, float radius) const{
+    return x - radius >= minX && x + radius <= maxX &&
+           y - radius >= minX && y + radius <= minX;
+  }
+
+  bool overlapsCircle(float x, float y, float radius) const{
+    float closestX = std::max(minX, std::min(x, maxX));
+    float closestY = std::max(minY, std::min(y, maxY));
+
+    float dx = x - closestX;
+    float dy = y - closestY;
+
+    return (dx * dx + dy * dy) <= (radius * radius);
+  }
+
+  float getCenterX() const { return (minX + maxX) * 0.5f; }
+  float getCenterY() const { return (minY + maxY) * 0.5f; }
+  float getWidth() const { return maxX - minX; }
+  float getHeight() const { return maxY - minY; }
+};
+
+
+=== ./QuadTree.h ===
+#pragma once
+
+// includes
+#include "AABB.h"
+#include "Dot.h"
+
+// std
+#include <memory>
+#include <vector>
+
+class QuadTreeNode {
+public:
+  static const int MAX_OBJECTS = 8;
+  static const int MAX_LEVELS = 9;
+
+private:
+  int level;
+  AABB bounds;
+  std::vector<Dot *> dots;
+  bool divided;
+
+  // Children: [0] = NW, [1] = NE, [2] = SW, [3] = SE
+  std::unique_ptr<QuadTreeNode> branches[4];
+
+public:
+  QuadTreeNode(int level, const AABB &bounds)
+      : level(level), bounds(bounds), divided(false) {
+    dots.reserve(MAX_OBJECTS + 1);
+  }
+
+  ~QuadTreeNode() = default; // TODO: what is this
+
+  bool insert(Dot *dot) {
+    // if dot doesnt fit inside this node's bounds, ignore it
+    if (!bounds.contains(dot->position.x, dot->position.y)) {
+      return false;
+    }
+
+    // if we have room and aren't divided, add it here
+    if (!divided && (level == MAX_LEVELS || dots.size() <= MAX_OBJECTS)) {
+      dots.push_back(dot);
+      return true;
+    }
+
+    // At this point we need to subdivide
+    if (!divided) {
+      subdivide();
+    }
+
+    // Try to insert into children
+    for (size_t i = 0; i < 4; i++) {
+      if(branches[i]->insert(dot))
+        break;
+    }
+
+    return true;
+  }
+
+  // Query dots in a given range, now with zero allocations
+  template <typename Callback>
+  void query(const AABB &range, Callback callback) const {
+    // Early escape if we don't overlap the range
+    if (!bounds.overlaps(range)) {
+      return;
+    }
+
+    // If not divided, chekk all dots in this node
+    if (!divided) {
+      for (Dot *dot : dots) {
+        callback(dot); // its faster not to check range here (+10fps)
+      }
+    } else {
+      // Query all children
+      for (int i = 0; i < 4; i++) {
+        if (branches[i]) {
+          branches[i]->query(range, callback);
+        }
+      }
+    }
+  }
+
+  void clear() {
+    dots.clear();
+    divided = false;
+    for (int i = 0; i < 4; i++) {
+      branches[i].reset();
+    }
+  }
+
+  int size() const {
+    int count = dots.size();
+    if (divided) {
+      for (int i = 0; i < 4; i++) {
+        if (branches[i]) {
+          count += branches[i]->size();
+        }
+      }
+    }
+    return count;
+  }
+
+  const AABB &getBounds() const { return bounds; }
+
+  void getAllBounds(std::vector<AABB>& allBounds) const {
+    if(!divided){
+      allBounds.push_back(bounds);
+    }
+    else{
+      for(int i=0; i<4; i++){
+        if(branches[i]){
+          branches[i]->getAllBounds(allBounds);
+        }
+      }
+    }
+  }
+
+private:
+  void subdivide() {
+    if (divided || level >= MAX_LEVELS) {
+      return;
+    }
+
+    float cX = bounds.getCenterX();
+    float cY = bounds.getCenterY();
+
+    // Create four children
+    branches[0] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(bounds.minX, bounds.minY, cX, cY));
+    branches[1] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(cX, bounds.minY, bounds.maxX, cY));
+    branches[2] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(bounds.minX, cY, cX, bounds.maxY));
+    branches[3] = std::make_unique<QuadTreeNode>(
+        level + 1, AABB(cX, cY, bounds.maxX, bounds.maxY));
+
+    divided = true;
+
+    // Redistribute existing dots to children
+    std::vector<Dot *> oldDots = std::move(dots);
+    dots.clear();
+
+    for (Dot *dot : oldDots) {
+      // Try to insert into children
+      for (size_t i = 0; i < 4; i++) {
+        branches[i]->insert(dot);
+      }
+    }
+  }
+};
+
+
+
+class QuadTree {
+private:
+  std::unique_ptr<QuadTreeNode> root;
+  AABB worldBounds;
+
+public:
+  QuadTree(const AABB &bounds) : worldBounds(bounds) {
+    root = std::make_unique<QuadTreeNode>(0, bounds);
+  }
+
+  ~QuadTree() = default;
+
+  void insert(Dot *dot) {
+    if (root) {
+      root->insert(dot);
+    }
+  }
+
+  template <typename Callback>
+  void query(const AABB &range, Callback callback) const {
+    if (root) {
+      root->query(range, callback);
+    }
+  }
+
+  void clear() { root = std::make_unique<QuadTreeNode>(0, worldBounds); }
+
+  int size() const { return root ? root->size() : 0; }
+
+  const AABB &getBounds() const { return worldBounds; }
+
+  void rebuild(const std::vector<Dot *> &dots) {
+    clear();
+    for (Dot *dot : dots) {
+      insert(dot);
+    }
+  }
+
+  std::vector<AABB> getAllBounds(){
+    if(root){
+      std::vector<AABB> bounds; 
+      root->getAllBounds(bounds);
+      return bounds;
+    }
+  }
+};
+
+=== ./Game.cpp ===
+#include "Game.h"
+#include "Debug.h"
+#include "Dot.h"
+#include "DotRenderer.h"
+#include "QuadTree.h"
+#include "Settings.h"
+#include "glm/glm.hpp"
+#include <chrono>
+#include <cstdlib>
+
+Game::Game(DotRenderer *aRenderer)
+    : renderer(aRenderer)
+{
+  for (size_t i = 0; i < Settings::DOTS_AMOUNT; i++) {
+    Dot *d = new Dot({std::rand() % Settings::SCREEN_WIDTH, std::rand() % Settings::SCREEN_HEIGHT});
+    dots.push_back(d);
+  }
+  Debug::Log("GAME: Size of dot: " + std::to_string(sizeof(*dots[0])));
+  Debug::Log("GAME: Created dots");
+
+  KeySettings settings;
+  settings.textColor = {100, 255, 100, 255};
+  Debug::UpdateKeySettings("RenderTime", settings);
+  Debug::UpdateKeySettings("CollisionTime", settings);
+  Debug::UpdateKeySettings("UpdateTime", settings);
+  Debug::UpdateKeySettings("QuadTime", settings);
+
+  timeSinceUpdate = 0.0f;
+  quadTree = std::make_unique<QuadTree>(
+      AABB(0, 0, Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT));
+
+  for (Dot *d : dots) {
+    quadTree->insert(d);
+  }
+}
+
+Game::~Game() { CleanUp(); }
+
+void Game::Update(float aDeltaTime) {
+  auto start = std::chrono::high_resolution_clock::now();
+
+  // // increment quadTreeTime
+  // timeSinceUpdate += aDeltaTime;
+  // // reset and create quadTree
+  // if (timeSinceUpdate >= Settings::QUAD_TREE_REFRESH_RATE / 1000.f) {
+  //   quadTree->rebuild(dots);
+  //   timeSinceUpdate = 0.0f;
+  // }
+  quadTree->rebuild(dots);
+  auto QuadTime_ch = std::chrono::high_resolution_clock::now();
+
+  for (Dot *d : dots) {
+    d->Update(aDeltaTime);
+  }
+  auto UpdateTime_ch = std::chrono::high_resolution_clock::now();
+
+  processCollisions();
+  auto CollisionTime_ch = std::chrono::high_resolution_clock::now();
+
+  for (Dot *d : dots) {
+    if (d != nullptr) {
+      d->Render(renderer);
+    }
+  }
+
+  // render bounds
+  // std::vector<AABB> allBounds = quadTree->getAllBounds();
+  // renderer->SetDrawColor(100, 100, 100, 20);
+  // for(auto& bound : allBounds){
+  //   renderer->DrawRect(bound.minX, bound.minY, bound.maxX, bound.maxY);
+  // }
+
+  auto RenderTime_ch = std::chrono::high_resolution_clock::now();
+
+  // DEBUG INFORMATION
+
+  // Quad Time info
+  int QuadTime_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(QuadTime_ch - start)
+          .count();
+  std::string QuadTime_str =
+      "QuadTime: " + std::to_string(QuadTime_millis) + "ms";
+  Debug::UpdateScreenField("QuadTime", QuadTime_str);
+  // Update time info
+  int UpdateTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              UpdateTime_ch - QuadTime_ch)
+                              .count();
+  std::string UpdateTime_str =
+      "UpdateTime: " + std::to_string(UpdateTime_millis) + "ms";
+  Debug::UpdateScreenField("UpdateTime", UpdateTime_str);
+  // Collision time info
+  int CollisionTime_millis =
+      std::chrono::duration_cast<std::chrono::milliseconds>(CollisionTime_ch -
+                                                            UpdateTime_ch)
+          .count();
+  std::string CollisionTime_str =
+      "CollisionTime: " + std::to_string(CollisionTime_millis) + "ms";
+  Debug::UpdateScreenField("CollisionTime", CollisionTime_str);
+  // Render time info
+  int RenderTime_millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              RenderTime_ch - CollisionTime_ch)
+                              .count();
+  std::string RenderTime_str =
+      "RenderTime: " + std::to_string(RenderTime_millis) + "ms";
+  Debug::UpdateScreenField("RenderTime", RenderTime_str);
+}
+
+void Game::processCollisions() {
+  for (Dot *d1 : dots) {
+    if (d1 == nullptr)
+      continue;
+
+    if (d1->radius >= Settings::DOT_RADIUS + 3) {
+      d1->Init({std::rand() % Settings::SCREEN_WIDTH, std::rand() % Settings::SCREEN_HEIGHT});
+      // quadTree->insert(d1);
+      continue;
+    }
+
+    float radius = d1->radius * 1.5f;
+    AABB queryBounds{d1->position.x - radius, d1->position.y - radius,
+                     d1->position.x + radius, d1->position.y + radius};
+    quadTree->query(queryBounds, [&](Dot *d2) {
+      if (d1 != d2 && d2 > d1) {
+        collideDots(d1, d2);
+      }
+    });
+    // for(Dot* d2 : dots){
+    //   if (d1 != d2 && d2 > d1) {
+    //     collideDots(d1, d2);
+    //   }
+    // }
+  }
+}
+
+void Game::collideDots(Dot *d1, Dot *d2) {
+  glm::vec2 diff = d2->position - d1->position;
+  float distSq = diff.x * diff.x + diff.y * diff.y;
+  float minDist = d1->radius + d2->radius;
+  float minDistSq = minDist * minDist;
+
+  if (distSq < minDistSq && distSq > 0.01f) { // division
+    float dist = sqrt(distSq);                // only sqrt when colliding
+    glm::vec2 normal = diff / dist;           // normallize manuall
+
+    // collision responses
+    d1->velocity = glm::reflect(d1->velocity, normal);
+    d2->velocity = glm::reflect(d2->velocity, -normal);
+
+    // Seperate dots
+    float overlap = (minDist + 2 - dist) * 1.5f;
+    d1->position -= normal * overlap;
+    d2->position += normal * overlap;
+
+    d1->radius++;
+    d2->radius++;
+    Debug::Log("[GAME] Collision!");
+  }
+}
+
+void Game::createQuadTree() {
+  quadTree = std::make_unique<QuadTree>(
+      AABB(0, 0, Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT));
+
+  for (Dot *d : dots) {
+    quadTree->insert(d);
+  }
+}
+
+void Game::CleanUp() {
+  // delete dots
+  for (size_t i = 0; i < dots.size(); ++i) {
+    delete dots[i];
+    dots[i] = nullptr;
+  }
+}
+
+=== ./main.cpp ===
+#include "DotRenderer.h"
+#include "FrameTime.h"
+#include "Game.h"
+#include "Settings.h"
+#include <Debug.h>
+#include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
+#include <algorithm>
+#include <iostream>
+#include <string>
+
+int main() {
+  Debug::Log("PROGRAM START");
+
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
+    return 1;
+  }
+
+  if (!TTF_Init()) {
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
+    SDL_Quit();
+    return 1;
+  }
+
+  SDL_Window *window =
+      SDL_CreateWindow("Game", Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT,
+                       SDL_WINDOW_OPENGL);
+
+  DotRenderer *renderer = new DotRenderer(window);
+  if (!renderer->GetSDLRenderer()) {
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
+    delete renderer;
+    SDL_DestroyWindow(window);
+    TTF_Quit();
+    SDL_Quit();
+    return 1;
+  }
+
+  TTF_Font *font = TTF_OpenFont("./fonts/arial.ttf", 24);
+  if (font == nullptr) {
+    const char *err = SDL_GetError();
+    Debug::LogError(err);
+    TTF_Quit();
+    SDL_Quit();
+    return 1;
+  }
+
+  renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
+
+  Debug *debug = new Debug(renderer, font);
+  Game *game = new Game(renderer);
+
+  bool quit = false;
+  SDL_Event e;
+
+  Uint64 lastTick = SDL_GetPerformanceCounter();
+  Uint64 currentTick;
+  double deltaTime = 0;
+  double fps = 0;
+  int frameCount = 0;
+  FrameTime frameTime;
+  int totalFrameCount = 0;
+  double fpsAccumulator = 0.0;
+  const double FPS_UPDATE_INTERVAL = 0.2f;
+
+  // text debug
+  std::string dotsCountText =
+      "DOTS_AMOUNT: " + std::to_string(Settings::DOTS_AMOUNT);
+  debug->UpdateScreenField("DOTS", dotsCountText);
+
+  while (!quit) {
+
+    currentTick = SDL_GetPerformanceCounter();
+    deltaTime =
+        (double)(currentTick - lastTick) / SDL_GetPerformanceFrequency();
+    lastTick = currentTick;
+
+    frameCount++;
+    totalFrameCount++;
+    fpsAccumulator += deltaTime;
+
+    if (fpsAccumulator >= FPS_UPDATE_INTERVAL) {
+      fps = frameCount / fpsAccumulator;
+
+      frameCount = 0;
+      fpsAccumulator = 0.0;
+    }
+
+    frameTime.Update(deltaTime);
+
+    while (SDL_PollEvent(&e) != 0) {
+      switch (e.type) {
+      case SDL_EVENT_QUIT:
+        quit = true;
+        break;
+      case SDL_EVENT_KEY_DOWN:
+        if (e.key.key == SDLK_ESCAPE)
+          quit = true;
+        break;
+      }
+    }
+
+    renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
+    renderer->Clear();
+
+    game->Update(deltaTime);
+
+    // - DEBUG
+    std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
+    debug->UpdateScreenField("fps", fpsText);
+    std::string onePLow =
+        "1% LOW: " + std::to_string(static_cast<int>(frameTime.onepercentlow)) +
+        "ms";
+    debug->UpdateScreenField("opl", onePLow);
+    debug->Render();
+
+    renderer->Present();
+
+    // std::cin.get();
+  }
+
+  delete game;
+  delete renderer;
+  TTF_CloseFont(font);
+  SDL_DestroyWindow(window);
+  TTF_Quit();
+  SDL_Quit();
+
+  return 0;
+}
+

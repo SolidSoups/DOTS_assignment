@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <memory>
 #include "AABB.h"
 
 class DotRenderer;
@@ -21,14 +22,6 @@ private:
   std::vector<Dot*> dots;
 
 private:
-  const int dot_amount;
-  const int screen_height;
-  const int screen_width;
-  const int quad_refresh_rate_millis;
-
 	DotRenderer* renderer; // self managed
-
-  // Quad stuff
-  const AABB default_bounds;
-  QuadTree* quadTree;
+  std::unique_ptr<QuadTree> quadTree;
 };
