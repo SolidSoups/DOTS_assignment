@@ -90,8 +90,9 @@ void Dots::renderAll(DotRenderer *aRenderer) {
   const float foo = 0.5f * 255.0f;
 
   for (size_t i = 0; i < MAX_DOTS; i++) {
-    float r = foo + (radii[i] - RADIUS) * foo * 3.f;
+    if(radii[i] > RADIUS + 2)
+      continue;
     aRenderer->SetDrawColor(foo + (radii[i] - RADIUS) * foo * 3.f, foo, foo, 255);
-    aRenderer->DrawFilledCircle(positions_x[i], positions_y[i], radii[i]);
+    aRenderer->DrawFilledCircle(positions_x[i], positions_y[i], radii[i], foo + (radii[i] - RADIUS) * foo * 3.f, foo, foo, 255);
   }
 }

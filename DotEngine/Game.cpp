@@ -68,24 +68,9 @@ void Game::processCollisions() {
       alive_indices.push_back(i);
     }
   }
-  for (size_t i1 : alive_indices) {
-    // create query bounds
-    float radius = dots.radii[i1] * 1.5f;
-    // float pos_x = dots.positions_x[i1];
-    // float pos_y = dots.positions_y[i1];
-    // AABB queryBounds{
-    //   pos_x - radius, 
-    //   pos_y - radius, 
-    //   pos_x + radius,
-    //   pos_y + radius
-    // };
 
-    // perform query and callback to collision func
-    // quadTree->query(queryBounds, [&](size_t i2) {
-    //   if (i1 != i2 && i2 > i1 && dots.radii[i2] < Settings::DOT_RADIUS + 3) {
-    //     collideDots(i1, i2);
-    //   }
-    // });
+  for (size_t i1 : alive_indices) {
+    float radius = dots.radii[i1] * 1.5f;
     grid.queryNeighbours(
       dots.positions_x[i1],
       dots.positions_y[i1],

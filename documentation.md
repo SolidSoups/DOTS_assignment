@@ -178,7 +178,44 @@ This is really cool. I'm finally back to where i was before, and along the way I
 
  - [x] Next up is some clean-up. I want to hammer in this profiler I created, and clean up some of my code. It should be pretty simple to get profiling data, such as timings and counts, avg and
 screen debug info.
-- [ ] Take a look at some optimizations for the renderer.
+- [ ] Take a look at some optimizations for the renderer. Here is a snapshot of the performance before:
+    [LOG] LOGGING KVP DEBUG VALUES:
+    [LOG] 1% LOW: 14ms
+    [LOG] FPS: 68
+    [LOG] render: 8.71ms avg
+    [LOG] collisions: 3.31ms avg
+    [LOG] dots_update: 0.17ms avg
+    [LOG] grid_build: 0.43ms avg
+    [LOG] DOTS_AMOUNT: 9000
+
+    For Dots with a radius of 1, you can just draw a point. This reduces the render time down to **5.8ms**, a
+    **2.9ms** drop (**0.33%**).  Although "technically" they are supposed to be sized by two (since radius of 1
+    means diameter of 2).
+
+    UPDATE: Tried to render everything on different threads, but turns out that SDL can only render on the main
+    thread, so that was a failure. I think i'll just draw some hexagons instead since that seems to be easier.
+        [LOG] LOGGING KVP DEBUG VALUES:
+        [LOG] 1% LOW: 11ms              **(-3ms)**
+        [LOG] FPS: 81                   **(+13fps)**
+        [LOG] render: 6.54ms avg        **(-2.17ms)**
+        [LOG] collisions: 3.16ms avg    **(-0.15ms)**
+        [LOG] dots_update: 0.17ms avg   **(n/a)**
+        [LOG] grid_build: 0.48ms avg    **(+5ms)**
+        [LOG] DOTS_AMOUNT: 9000
+
+    I ended up implementing a pixelBuffer, which the client writes to using the DotRenderer api. I'm a little
+    unhappy about that implementation, because it's such a verbose function, but whatevs. I'm thinking, since i'm
+    using a pixel buffer now, i could definitely implement a threaded pixel buffer next (since it doesn't actually
+    affect the rendering pipeline).
+
+    I'm wondering how many threads i will be able to use. My pc said it could handle 8 threads, but how will i
+    balance them between the rendering and collision? It might actually be okay, since the threads would be
+    finished and joined before the next process began. But we'll see.
+
+
+
+
+
 
 # Cool pics
     Accidentally caused this cool effect while implementing SoA. If you look closely, you can see that
