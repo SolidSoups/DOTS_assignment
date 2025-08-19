@@ -1,12 +1,13 @@
 # ninja log v6
-4	1971	1755477550568707142	CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o	16cf4aac626e7e84
-10	1507	1755478646938658461	CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o	ca12dfa018814eaa
+7	2942	1755561576785706058	CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o	16cf4aac626e7e84
+9	3008	1755561576787706065	CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o	ca12dfa018814eaa
 3	17	1755209798065940741	CMakeFiles/DotEngine.dir/DotEngine/DotSettings.cpp.o	921bb40c405197ae
 3	584	1755217457271550440	CMakeFiles/DotEngine.dir/DotEngine/QuadTree.cpp.o	e2d652ab24f69b4
-2142	2378	1755478666445729799	bin/DotEngine	86059dcbdbfdb0d1
-6	4119	1755477550571216327	CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o	88ff6f94f7d4e315
-9	2142	1755478664312721999	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
-5	3827	1755477550570957075	CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o	4256534f94699897
+4133	4328	1755561715091192362	bin/DotEngine	675e15bb6708b77f
+10	4254	1755561576789928456	CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o	88ff6f94f7d4e315
+8	4133	1755561710966177666	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
+9	4183	1755561576789374199	CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o	4256534f94699897
 4	1001	1755434882473296766	CMakeFiles/DotEngine.dir/DotEngine/Dot.cpp.o	f8c0898f2cddb885
-10	1504	1755478713661902470	CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o	ca12dfa018814eaa
-1504	1727	1755478715155907934	bin/DotEngine	86059dcbdbfdb0d1
+8	1696	1755557963278928037	CMakeFiles/DotEngine.dir/DotEngine/ThreadPool.cpp.o	810bddd61712fe05
+7	4106	1755561791863465895	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
+4106	4293	1755561795962480499	bin/DotEngine	675e15bb6708b77f

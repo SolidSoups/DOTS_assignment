@@ -5,11 +5,11 @@
 #include <Debug.h>
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
-#include <algorithm>
-#include <iostream>
 #include <string>
 #include "SimpleProfiler.h"
-#include <thread>
+#include "Dots.h"
+#include "ThreadPool.h"
+
 
 int main() {
   Debug::Log("PROGRAM START");
@@ -31,7 +31,9 @@ int main() {
       SDL_CreateWindow("Game", Settings::SCREEN_WIDTH, Settings::SCREEN_HEIGHT,
                        SDL_WINDOW_OPENGL);
 
-  DotRenderer *renderer = new DotRenderer(window);
+  ThreadPool* threadPool = new ThreadPool();
+
+  DotRenderer *renderer = new DotRenderer(window, threadPool);
   if (!renderer->GetSDLRenderer()) {
     const char *err = SDL_GetError();
     Debug::LogError(err);
@@ -54,7 +56,10 @@ int main() {
   renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
   Debug *debug = new Debug(renderer, font);
-  Game *game = new Game(renderer);
+  Game *game = new Game(renderer, threadPool);
+
+  FrameTime frameTime;
+  SimpleProfiler pf1;
 
   bool quit = false;
   SDL_Event e;
@@ -64,16 +69,11 @@ int main() {
   double deltaTime = 0;
   double fps = 0;
   int frameCount = 0;
-  FrameTime frameTime;
-  SimpleProfiler pf1;
   int totalFrameCount = 0;
   double fpsAccumulator = 0.0;
   const double FPS_UPDATE_INTERVAL = 0.2f;
 
   // text debug
-  std::string dotsCountText =
-      "DOTS_AMOUNT: " + std::to_string(Settings::DOTS_AMOUNT);
-  debug->UpdateScreenField("DOTS", dotsCountText);
 
   while (!quit) {
     currentTick = SDL_GetPerformanceCounter();
@@ -127,6 +127,7 @@ int main() {
 
   Debug::OutputScreenFields();
 
+  delete threadPool;
   delete game;
   delete renderer;
   TTF_CloseFont(font);

@@ -83,9 +83,12 @@ public:
       float avg = timer.accumulated / timer.count;
       float rounded = std::round(avg * 100.0f) / 100.0f;
       ss << rounded << "ms avg";
+      timer.accumulated = 0;
+      timer.count = 0;
     } else{
       ss << "n/a";
     }
+
     return ss.str();
   }
 
@@ -112,7 +115,7 @@ public: // output reports
              counter.accumulated,
              counter.count);
     } else{
-      printf("\t%s: Insufficient data...", name.c_str());
+      printf("\t%s: Insufficient data...\n", name.c_str());
     }
   }
   void reportCountersFull(){
@@ -125,7 +128,7 @@ public: // output reports
                counter.accumulated,
                counter.count);
       } else{
-        printf("\t%s: Insufficient data", name.c_str());
+        printf("\t%s: Insufficient data...\n", name.c_str());
       }
     }
   }
@@ -140,7 +143,7 @@ public: // output reports
              timer.accumulated,
              timer.count);
     } else{
-      printf("\t%s: Insufficient data...", name.c_str());
+      printf("\t%s: Insufficient data...\n", name.c_str());
     }
   }
 
@@ -154,7 +157,7 @@ public: // output reports
                timer.accumulated,
                timer.count);
       } else{
-        printf("\t%s: Insufficient data...", name.c_str());
+        printf("\t%s: Insufficient data...\n", name.c_str());
       }
     }  
   }

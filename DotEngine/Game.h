@@ -8,11 +8,12 @@
 
 class DotRenderer;
 class QuadTree;
+class ThreadPool;
 
 class Game
 {
 public:
-	Game(DotRenderer* aRenderer);
+	Game(DotRenderer* aRenderer, ThreadPool* threadPool);
   ~Game();
 	void Update(float aDeltaTime);
   void processCollisions();
@@ -24,6 +25,6 @@ private:
 
 private:
 	DotRenderer* renderer; // self managed
-  // std::unique_ptr<QuadTree> quadTree;
+  ThreadPool* threadPool;
   SpatialGrid grid;
 };

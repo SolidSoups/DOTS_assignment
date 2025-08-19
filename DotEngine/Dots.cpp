@@ -5,6 +5,7 @@
 #include <cstring>
 #include <ctime>
 #include <random>
+#include "Debug.h"
 
 thread_local std::mt19937 Dots::rng;
 thread_local std::uniform_real_distribution<float> Dots::angleDist;
@@ -13,7 +14,11 @@ thread_local std::uniform_int_distribution<int> Dots::yDist;
 thread_local bool Dots::initialized = false;
 
 // Constructor
-Dots::Dots() {}
+Dots::Dots() {
+  std::string dotsCountText =
+      "DOTS_AMOUNT: " + std::to_string(MAX_DOTS);
+  Debug::UpdateScreenField("DOTS", dotsCountText);
+}
 
 // Deconstructor
 Dots::~Dots() {}
@@ -89,10 +94,15 @@ void Dots::updateAll(float deltaTime) {
 void Dots::renderAll(DotRenderer *aRenderer) {
   const float foo = 0.5f * 255.0f;
 
+  int reds[MAX_DOTS];
   for (size_t i = 0; i < MAX_DOTS; i++) {
-    if(radii[i] > RADIUS + 2)
-      continue;
-    aRenderer->SetDrawColor(foo + (radii[i] - RADIUS) * foo * 3.f, foo, foo, 255);
-    aRenderer->DrawFilledCircle(positions_x[i], positions_y[i], radii[i], foo + (radii[i] - RADIUS) * foo * 3.f, foo, foo, 255);
+    reds[i] = foo + (radii[i] - RADIUS) * foo * 3.f;
   }
+  aRenderer->BatchDrawCirclesCPUThreaded(
+    positions_x,
+    positions_y,
+    radii,
+    reds,
+    MAX_DOTS
+  );
 }

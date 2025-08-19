@@ -6,8 +6,9 @@
 #include <chrono>
 #include <cstdlib>
 #include "SimpleProfiler.h"
+#include "ThreadPool.h"
 
-Game::Game(DotRenderer *aRenderer) : renderer(aRenderer) {
+Game::Game(DotRenderer *aRenderer, ThreadPool* threadPool) : renderer(aRenderer), threadPool(threadPool) {
   dots.init();
   Debug::Log("GAME: Size of dot: " + std::to_string(dots.size()));
   Debug::Log("GAME: Created dots");
@@ -49,10 +50,13 @@ void Game::Update(float aDeltaTime) {
   // ####################
   // ## DEBUG TIMINGS: ##
   // ####################
-  Debug::UpdateScreenField("GridBuildTime", pf1.getFormattedTimer("grid_build"));
-  Debug::UpdateScreenField("UpdateTime", pf1.getFormattedTimer("dots_update"));
-  Debug::UpdateScreenField("CollisionTime", pf1.getFormattedTimer("collisions"));
-  Debug::UpdateScreenField("RenderTime", pf1.getFormattedTimer("render"));
+  static int frame = 59;
+  if(++frame % 60 == 0){
+    Debug::UpdateScreenField("GridBuildTime", pf1.getFormattedTimer("grid_build"));
+    Debug::UpdateScreenField("UpdateTime", pf1.getFormattedTimer("dots_update"));
+    Debug::UpdateScreenField("CollisionTime", pf1.getFormattedTimer("collisions"));
+    Debug::UpdateScreenField("RenderTime", pf1.getFormattedTimer("render"));
+  }
 }
 
 SimpleProfiler profiler;

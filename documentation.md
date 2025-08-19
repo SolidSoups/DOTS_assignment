@@ -213,6 +213,70 @@ screen debug info.
     finished and joined before the next process began. But we'll see.
 
 
+# Monday, 18 August 2025
+I have succesfully implemented threaded rendering in the project. The only problem: The rendering
+time has gone up. Weirdly, having 8 threads dividing up the tasks should have fixed my problems.
+But alas! The process of creating and destroying threads is VERY EXPENSIVE. So my problem rn is
+that for every Batch render of dots, I am creating 8 threads and destroying them... EVERY FRAME!
+
+starting_threads:   **6.26 ms avg**
+joinging_threads:   **4.35 ms avg**
+total:              **10.61 ms avg**
+hmmm... so just the process of creating and destroying threads itself takes up 10ms of render
+time.
+
+I thought to myself, why don't i just precreate them and then fill them with tasks to do,
+destroying them only when the program has finished. Doing some research, this is called:
+            
+ *Thread Pooling*
+The idea is to have a class manage a certain number of threads, and for the main thread to queue
+ work onto those threads...
+
+Update: I implemented the thread pool. VERY COOL! It works wonders, just a simple little file
+doing all my work, wonderful! I'm so happy.
+
+I was able to get these stats from it:
+starting_jobs:      **0.05 ms avg   (-99.20%)!**
+waiting_for_jobs:   **4.18 ms avg   (-3.91%)**
+total_time:         **4.23 ms avg   (-60.13%)**
+
+Awesome! this is so much better. 4.18ms is just the time it takes to do the jobs, but starting the
+jobs is at the best place rn. Somehow i want to fit in the process of bunching together the pixel
+arrays into this workflow.
+
+Update: Alright, it has been one hell of a night. I started first by threading the CombineBuffers
+function, by splitting up the screens height for each thread, and then the worker thread would
+comb through every pixel and check if it was contained in its assigned region. Problem is, combing
+through every pixel and skipping a bunch of them is just wasteful. So right before i started the
+combine buffer workers, i sorted the pixelData into the threads regions. But this took 6ms and was
+way too SLOW!
+
+After a while, I moved the sorting to the drawing pass. Each draw job now also sorts the pixels
+into buckets. This gave way to the weirdest vector i've ever seen:
+
+```
+std::vector<std::vector<std::vector<Pixel>>> m_threadSortedPixels;
+```
+
+Strange huh. With this implementation, i got these results:
+    [SimpleProfiler Timers Report]:
+        sdl_calls: 1.38ms avg 
+        combine_buffers:wait_for_threads: 2.70ms avg 
+        combine_buffers:start_threads: 0.06ms avg 
+        combine_buffers: 3.21ms avg 
+        drawing_buffers:wait_for_threads: 7.27ms avg 
+        drawing_buffers:queuing_jobs: 0.08ms avg 
+        drawing_buffers: 7.36ms avg 
+        total: 11.95ms avg 
+    [LOG] LOGGING KVP DEBUG VALUES:
+    [LOG] 1% LOW: 14ms
+    [LOG] FPS: 47
+    [LOG] render: 12.55ms avg     (nice, not where i started... but better now!)
+    [LOG] collisions: 8.31ms avg
+    [LOG] dots_update: 0.37ms avg
+    [LOG] grid_build: 1.05ms avg
+    [LOG] DOTS_AMOUNT: 10000
+
 
 
 

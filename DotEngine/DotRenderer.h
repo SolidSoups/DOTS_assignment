@@ -3,16 +3,38 @@
 #include <unordered_map>
 #include <vector>
 #include <cstdint>
+#include <atomic>
+
+class ThreadPool;
 
 class DotRenderer {
+private:
+  static constexpr int MAX_THREADS = 8;
+
 private:
   struct CirclePixels{
     std::vector<std::pair<int, int>> offsets;
   };
+  struct Pixel{
+    size_t index;
+    uint32_t color;
+  };
+  // Sorted like so: [drawingThreadId][regionIndex][pixel]
+  //
+  // Each drawing thread sorts the pixels into regions, which 
+  // each combining thread then can iterate through without 
+  // needing to sort the pixels beforehand.
+  std::vector<std::vector<std::vector<Pixel>>> m_threadSortedPixelData;
+
   std::unordered_map<int, CirclePixels> circleCache;
   void CreateCircle(int radius);
-  uint32_t* pixelBuffer = nullptr;
+
+  uint32_t* m_combinedPixelBuffer;
+  const size_t bufferSize;
+
   SDL_Texture* frameTexture;
+
+  ThreadPool* m_threadPool;
 
   Uint8 red;
   Uint8 green;
@@ -20,7 +42,7 @@ private:
   Uint8 alpha;
   
 public:
-  DotRenderer(SDL_Window *window);
+  DotRenderer(SDL_Window *window, ThreadPool* threadPool);
 
   ~DotRenderer();
 
@@ -32,9 +54,28 @@ public:
   void Present();
 
   void DrawRect(float mx, float my, float Mx, float My);
-  void DrawFilledCircle(int centerX, int centerY, int radius, int r, int g, int b, int a);
   void RenderTexture(SDL_Texture *texture, const SDL_FRect *srcRect,
                      const SDL_FRect *dstRect);
+  void DrawFilledCircle(int centerX,
+                        int centerY,
+                        int radius,
+                        int r,
+                        int g,
+                        int b,
+                        int a,
+                        int drawingThreadId);
+  void BatchDrawCirclesCPUThreaded(
+    float pos_x[],
+    float pos_y[],
+    uint8_t radii[],
+    int red[],
+    size_t size
+  );
+  void CombineThreadBuffers(
+    const std::vector<std::vector<std::vector<Pixel>>> &pixelData,
+    uint32_t* outputBuffer
+  );
+  uint32_t BlendAdditive(uint32_t src, uint32_t dst);
 
 private:
   SDL_Renderer *m_sdlRenderer;
