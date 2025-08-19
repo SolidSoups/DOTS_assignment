@@ -15,8 +15,8 @@
 #include <iostream>
 #include <thread>
 
-DotRenderer::DotRenderer(SDL_Window *window, ThreadPool *threadPool)
-    : m_sdlRenderer(nullptr), m_threadPool(threadPool),
+DotRenderer::DotRenderer(SDL_Window *window, ThreadPool *threadPool, Timer& timer)
+    : m_sdlRenderer(nullptr), m_threadPool(threadPool), timer(timer),
       bufferSize(Settings::SCREEN_WIDTH * Settings::SCREEN_HEIGHT) {
   m_sdlRenderer = SDL_CreateRenderer(window, nullptr);
   if (!m_sdlRenderer)
@@ -25,7 +25,7 @@ DotRenderer::DotRenderer(SDL_Window *window, ThreadPool *threadPool)
   // initialize pixel bufffer modificants
   const size_t nThreads = threadPool->num_threads;
   m_threadSortedPixelData.resize(nThreads);
-  for(int i=0; i<nThreads; i++){
+  for (int i = 0; i < nThreads; i++) {
     m_threadSortedPixelData[i].resize(nThreads);
   }
   m_combinedPixelBuffer = new (std::nothrow) uint32_t[bufferSize];
@@ -88,14 +88,13 @@ void DotRenderer::DrawPoint(int x, int y) {
   }
 }
 
-SimpleProfiler pf22;
 void DotRenderer::BatchDrawCirclesCPUThreaded(float pos_x[], float pos_y[],
                                               uint8_t radii[], int red[],
                                               size_t size) {
   if (!m_sdlRenderer || size == 0)
     return;
 
-  pf22.startTimer("total");
+  auto& t_total = timer.startChild("render_total");
 
   std::vector<std::thread> workers;
   const int indicesPerThread = size / MAX_THREADS;
@@ -103,75 +102,74 @@ void DotRenderer::BatchDrawCirclesCPUThreaded(float pos_x[], float pos_y[],
   const int nThreads = m_threadPool->num_threads;
 
   // queue work for threads
-  pf22.startTimer("drawing_buffers");
-  pf22.startTimer("drawing_buffers:queuing_jobs");
+  auto& t_drawBuffer = t_total.startChild("drawing_buffers");
+  auto& t_drawBuffer_queueJobs = t_drawBuffer.startChild("queuing_jobs");
   for (size_t t = 0; t < nThreads; ++t) {
     // we need to know what indices to work on
     size_t start = t * indicesPerThread;
     size_t end = (t == nThreads - 1) ? size - 1 : start + indicesPerThread;
 
     // clear the old pixel data
-    for(auto& bin : m_threadSortedPixelData[t]){
-      bin.clear(); 
+    for (auto &bin : m_threadSortedPixelData[t]) {
+      bin.clear();
     }
 
     m_threadPool->queueJob([this, pos_x, pos_y, radii, red, t, start, end]() {
       for (size_t i = start; i <= end; i++) {
-        DrawFilledCircle(pos_x[i], pos_y[i], radii[i], red[i], 125, 125, 255, t);
+        DrawFilledCircle(pos_x[i], pos_y[i], radii[i], red[i], 125, 125, 255,
+                         t);
       }
     });
   }
-  pf22.stopTimer("drawing_buffers:queuing_jobs");
+  t_drawBuffer_queueJobs.stopClock();
 
-  pf22.startTimer("drawing_buffers:wait_for_threads");
+  auto& t_drawBuffer_waitForThreads = t_drawBuffer.startChild("wait_for_threads");
   m_threadPool->wait();
-  pf22.stopTimer("drawing_buffers:wait_for_threads");
-  pf22.stopTimer("drawing_buffers");
+  t_drawBuffer_waitForThreads.stopClock();
+  t_drawBuffer.stopClock();
 
   // combine pixelBuffers
-  pf22.startTimer("combine_buffers");
-  CombineThreadBuffers(m_threadSortedPixelData, m_combinedPixelBuffer);
-  pf22.stopTimer("combine_buffers");
+  CombineThreadBuffers(m_threadSortedPixelData, m_combinedPixelBuffer, t_total);
 
   // update and render texture
-  pf22.startTimer("sdl_calls");
+  auto& t_sdlCalls = t_total.startChild("sdl_calls");
   SDL_UpdateTexture(frameTexture, nullptr, m_combinedPixelBuffer,
                     Settings::SCREEN_WIDTH * sizeof(uint32_t));
   SDL_RenderTexture(m_sdlRenderer, frameTexture, nullptr, nullptr);
-  pf22.stopTimer("sdl_calls");
-
-  // debug timers
-  pf22.stopTimer("total");
-  static int frame = 0;
-  if (++frame % 120 == 0) {
-    pf22.reportTimersFull();
-  }
+  t_sdlCalls.stopClock();
+  t_total.stopClock();
 }
 
 // const size_t indicesPerThread = pixelData.size() / m_threadPool->num_threads;
 void DotRenderer::CombineThreadBuffers(
-    const std::vector<std::vector<std::vector<Pixel>>> &pixelData, uint32_t *outputBuffer) {
+    const std::vector<std::vector<std::vector<Pixel>>> &pixelData,
+    uint32_t *outputBuffer, Timer& t_total) {
+  auto& t_combineBuffers = t_total.startChild("combine_buffers");
+
   memset(outputBuffer, 0, bufferSize * sizeof(uint32_t));
 
   const int maxThreads = m_threadPool->num_threads;
 
-  pf22.startTimer("combine_buffers:start_threads");
+  auto& t_combineBuffers_startThreads = t_combineBuffers.startChild("start_threads");
   for (int t = 0; t < maxThreads; ++t) {
-    m_threadPool->queueJob([this, &pixelData, outputBuffer, t]{
+    m_threadPool->queueJob([this, &pixelData, outputBuffer, t] {
       // This combining thread (t) is reponsible for one region.
       // It must process all bins for its region from ALL drawing threads
-      for(int i=0; i<pixelData.size(); i++){
-        for(const auto& pixel : pixelData[i][t]){
-          outputBuffer[pixel.index] = BlendAdditive(pixel.color, outputBuffer[pixel.index]);
+      for (int i = 0; i < pixelData.size(); i++) {
+        for (const auto &pixel : pixelData[i][t]) {
+          outputBuffer[pixel.index] =
+              BlendAdditive(pixel.color, outputBuffer[pixel.index]);
         }
       }
     });
   }
-  pf22.stopTimer("combine_buffers:start_threads");
+  t_combineBuffers_startThreads.stopClock();
 
-  pf22.startTimer("combine_buffers:wait_for_threads");
+  auto& t_combineBuffers_waitForThreads = t_combineBuffers.startChild("wait_for_threads");
   m_threadPool->wait();
-  pf22.stopTimer("combine_buffers:wait_for_threads");
+  t_combineBuffers_waitForThreads.stopClock();
+
+  t_combineBuffers.stopClock();
 }
 
 // no support for alpha
@@ -194,8 +192,7 @@ uint32_t DotRenderer::BlendAdditive(uint32_t src, uint32_t dst) {
 }
 
 void DotRenderer::DrawFilledCircle(int centerX, int centerY, int radius, int r,
-                                   int b, int g, int a,
-                                   int drawingThreadId) {
+                                   int b, int g, int a, int drawingThreadId) {
   if (!m_sdlRenderer)
     return;
 
@@ -221,9 +218,11 @@ void DotRenderer::DrawFilledCircle(int centerX, int centerY, int radius, int r,
       continue;
 
     size_t pixelIndex = absX + absY * Settings::SCREEN_WIDTH;
-    size_t regionIndex = std::min((int)(m_threadPool->num_threads - 1), absY / rowsPerRegion);
+    size_t regionIndex =
+        std::min((int)(m_threadPool->num_threads - 1), absY / rowsPerRegion);
 
-    m_threadSortedPixelData[drawingThreadId][regionIndex].push_back({pixelIndex, color});
+    m_threadSortedPixelData[drawingThreadId][regionIndex].push_back(
+        {pixelIndex, color});
   }
 }
 

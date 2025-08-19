@@ -4,8 +4,10 @@
 #include <vector>
 #include <cstdint>
 #include <atomic>
+#include "SimpleProfiler.h"
 
 class ThreadPool;
+struct Timer;
 
 class DotRenderer {
 private:
@@ -19,6 +21,7 @@ private:
     size_t index;
     uint32_t color;
   };
+
   // Sorted like so: [drawingThreadId][regionIndex][pixel]
   //
   // Each drawing thread sorts the pixels into regions, which 
@@ -35,6 +38,7 @@ private:
   SDL_Texture* frameTexture;
 
   ThreadPool* m_threadPool;
+  Timer& timer;
 
   Uint8 red;
   Uint8 green;
@@ -42,7 +46,7 @@ private:
   Uint8 alpha;
   
 public:
-  DotRenderer(SDL_Window *window, ThreadPool* threadPool);
+  DotRenderer(SDL_Window *window, ThreadPool* threadPool, Timer& timer);
 
   ~DotRenderer();
 
@@ -73,7 +77,7 @@ public:
   );
   void CombineThreadBuffers(
     const std::vector<std::vector<std::vector<Pixel>>> &pixelData,
-    uint32_t* outputBuffer
+    uint32_t* outputBuffer, Timer& t_total
   );
   uint32_t BlendAdditive(uint32_t src, uint32_t dst);
 

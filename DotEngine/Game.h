@@ -4,6 +4,7 @@
 #include "AABB.h"
 #include "Dots.h"
 #include "SpatialGrid.h"
+#include "SimpleProfiler.h"
 
 
 class DotRenderer;
@@ -13,7 +14,7 @@ class ThreadPool;
 class Game
 {
 public:
-	Game(DotRenderer* aRenderer, ThreadPool* threadPool);
+	Game(DotRenderer* aRenderer, ThreadPool* threadPool, Timer& timer);
   ~Game();
 	void Update(float aDeltaTime);
   void processCollisions();
@@ -25,6 +26,7 @@ private:
 
 private:
 	DotRenderer* renderer; // self managed
+  Timer& timer;
   ThreadPool* threadPool;
   SpatialGrid grid;
 };

@@ -1,14 +1,12 @@
 #include "Game.h"
 #include "Debug.h"
 #include "DotRenderer.h"
-#include "Settings.h"
-#include "glm/glm.hpp"
-#include <chrono>
-#include <cstdlib>
 #include "SimpleProfiler.h"
 #include "ThreadPool.h"
+#include <cstdlib>
 
-Game::Game(DotRenderer *aRenderer, ThreadPool* threadPool) : renderer(aRenderer), threadPool(threadPool) {
+Game::Game(DotRenderer *aRenderer, ThreadPool *threadPool, Timer& timer)
+    : renderer(aRenderer), threadPool(threadPool), timer(timer) {
   dots.init();
   Debug::Log("GAME: Size of dot: " + std::to_string(dots.size()));
   Debug::Log("GAME: Created dots");
@@ -26,36 +24,42 @@ Game::Game(DotRenderer *aRenderer, ThreadPool* threadPool) : renderer(aRenderer)
 
 Game::~Game() {}
 
-SimpleProfiler pf1;
 void Game::Update(float aDeltaTime) {
-  pf1.startTimer("grid_build");
+  auto &t_total = timer.startChild("update_total");
+
+  auto &t_rebuild = t_total.startChild("grid_build");
   grid.rebuild(dots);
-  pf1.stopTimer("grid_build");
+  t_rebuild.stopClock();
 
   // Update all the dots positions
-  pf1.startTimer("dots_update");
+  auto &t_updateDots = t_total.startChild("dots_update");
   dots.updateAll(aDeltaTime);
-  pf1.stopTimer("dots_update");
+  t_updateDots.stopClock();
 
   // Process all collisions
-  pf1.startTimer("collisions");
+  auto &t_collision = t_total.startChild("dots_collision");
   processCollisions();
-  pf1.stopTimer("collisions");
+  t_collision.stopClock();
 
   // Render all the dots
-  pf1.startTimer("render");
+  auto &t_render = t_total.startChild("dots_render");
   dots.renderAll(renderer);
-  pf1.stopTimer("render");
+  t_render.stopClock();
+  t_total.stopClock();
 
   // ####################
   // ## DEBUG TIMINGS: ##
   // ####################
-  static int frame = 59;
-  if(++frame % 60 == 0){
-    Debug::UpdateScreenField("GridBuildTime", pf1.getFormattedTimer("grid_build"));
-    Debug::UpdateScreenField("UpdateTime", pf1.getFormattedTimer("dots_update"));
-    Debug::UpdateScreenField("CollisionTime", pf1.getFormattedTimer("collisions"));
-    Debug::UpdateScreenField("RenderTime", pf1.getFormattedTimer("render"));
+  static int frame = 0;
+  if (++frame % 60 == 0) {
+    Debug::UpdateScreenField("GridBuildTime",
+                             t_rebuild.getSimpleReport("GridBuildTime"));
+    Debug::UpdateScreenField("UpdateTime",
+                             t_updateDots.getSimpleReport("UpdateTime"));
+    Debug::UpdateScreenField("CollisionTime",
+                             t_collision.getSimpleReport("CollisionTime"));
+    Debug::UpdateScreenField("RenderTime",
+                             t_render.getSimpleReport("RenderTime"));
   }
 }
 
@@ -65,10 +69,10 @@ void Game::processCollisions() {
   alive_indices.clear();
   alive_indices.reserve(dots.size());
 
-  for(size_t i=0; i<dots.size(); i++){
-    if(dots.radii[i] >= dots.RADIUS + 3){
+  for (size_t i = 0; i < dots.size(); i++) {
+    if (dots.radii[i] >= dots.RADIUS + 3) {
       dots.initDot(i);
-    } else{
+    } else {
       alive_indices.push_back(i);
     }
   }
@@ -76,15 +80,11 @@ void Game::processCollisions() {
   for (size_t i1 : alive_indices) {
     float radius = dots.radii[i1] * 1.5f;
     grid.queryNeighbours(
-      dots.positions_x[i1],
-      dots.positions_y[i1],
-      radius,
-      [&](size_t i2){
-        if(i1 != i2 && i2 > i1 && dots.radii[i2] < Dots::RADIUS + 3){
-          collideDots(i1, i2);
-        }
-      }
-    );
+        dots.positions_x[i1], dots.positions_y[i1], radius, [&](size_t i2) {
+          if (i1 != i2 && i2 > i1 && dots.radii[i2] < Dots::RADIUS + 3) {
+            collideDots(i1, i2);
+          }
+        });
   }
 }
 
@@ -103,14 +103,15 @@ void Game::collideDots(size_t i1, size_t i2) {
   float minDist = r1 + r2;
   float minDistSq = minDist * minDist;
 
-  if (distSq >= minDistSq || distSq <= 0.01f) return; // Early exit
+  if (distSq >= minDistSq || distSq <= 0.01f)
+    return; // Early exit
 
   float v1_x = dots.velocities_x[i1];
   float v1_y = dots.velocities_y[i1];
   float v2_x = dots.velocities_x[i2];
   float v2_y = dots.velocities_y[i2];
 
-  float dist = sqrt(distSq);                // only sqrt when colliding
+  float dist = sqrt(distSq); // only sqrt when colliding
   float normal_x = diff_x / dist;
   float normal_y = diff_y / dist;
 

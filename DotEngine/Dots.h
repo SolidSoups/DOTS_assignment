@@ -8,7 +8,7 @@ class DotRenderer;
 
 class Dots {
 public:
-  static constexpr int MAX_DOTS = 10000; // 9000 * 17B = 153kB
+  static constexpr int MAX_DOTS = 20000; // 9000 * 17B = 153kB
   static constexpr float VELOCITY = 50.f;
   static constexpr int RADIUS = 1;
 

@@ -1,13 +1,16 @@
 # ninja log v6
-7	2942	1755561576785706058	CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o	16cf4aac626e7e84
-9	3008	1755561576787706065	CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o	ca12dfa018814eaa
+3	1979	1755621731492509834	CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o	16cf4aac626e7e84
+2	1862	1755621871348234580	CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o	ca12dfa018814eaa
 3	17	1755209798065940741	CMakeFiles/DotEngine.dir/DotEngine/DotSettings.cpp.o	921bb40c405197ae
 3	584	1755217457271550440	CMakeFiles/DotEngine.dir/DotEngine/QuadTree.cpp.o	e2d652ab24f69b4
-4133	4328	1755561715091192362	bin/DotEngine	675e15bb6708b77f
-10	4254	1755561576789928456	CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o	88ff6f94f7d4e315
-8	4133	1755561710966177666	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
-9	4183	1755561576789374199	CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o	4256534f94699897
+2341	2471	1755621873686098701	bin/DotEngine	675e15bb6708b77f
+3	2205	1755621871348541861	CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o	88ff6f94f7d4e315
+2	2340	1755621871347089014	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
+3	2125	1755621871348355263	CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o	4256534f94699897
 4	1001	1755434882473296766	CMakeFiles/DotEngine.dir/DotEngine/Dot.cpp.o	f8c0898f2cddb885
 8	1696	1755557963278928037	CMakeFiles/DotEngine.dir/DotEngine/ThreadPool.cpp.o	810bddd61712fe05
-7	4106	1755561791863465895	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
-4106	4293	1755561795962480499	bin/DotEngine	675e15bb6708b77f
+3	1925	1755621894953015835	CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o	ca12dfa018814eaa
+3	2176	1755621894953160296	CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o	4256534f94699897
+3	2370	1755621894952186770	CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o	2c88786df785c596
+3	2395	1755621894953295802	CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o	88ff6f94f7d4e315
+2395	2512	1755621897344196676	bin/DotEngine	675e15bb6708b77f

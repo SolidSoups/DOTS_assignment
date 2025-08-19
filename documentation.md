@@ -277,8 +277,32 @@ Strange huh. With this implementation, i got these results:
     [LOG] grid_build: 1.05ms avg
     [LOG] DOTS_AMOUNT: 10000
 
+# Tuesday, 19 august 2025
+Remade the profiler, now i get output like this:
 
-
+[SimpleProfiler Timers Report]:
+- total:                                **16.27ms avg** (32206.17ms total, 1980 calls)
+    - render_total:                     **7.67ms avg** (15196.06ms total, 1980 calls)
+        - sdl_calls:                    **0.71ms avg** (1413.21ms total, 1980 calls)
+        - combine_buffers:              **2.24ms avg** (4427.23ms total, 1980 calls)
+            - wait_for_threads:         **2.02ms avg** (4000.15ms total, 1980 calls)
+            - start_threads:            **0.03ms avg** (65.52ms total, 1980 calls)
+        - drawing_buffers:              **4.72ms avg** (9341.68ms total, 1980 calls)
+            - wait_for_threads:         **4.66ms avg** (9234.67ms total, 1980 calls)
+            - queuing_jobs:             **0.05ms avg** (102.58ms total, 1980 calls)
+    - update_total:                     **16.26ms avg** (32186.08ms total, 1980 calls)
+        - dots_render:                  **7.75ms avg** (15336.32ms total, 1980 calls)
+        - dots_collision:               **7.70ms avg** (15240.52ms total, 1980 calls)
+        - dots_update:                  **0.26ms avg** (520.33ms total, 1980 calls)
+        - grid_build:                   **0.54ms avg** (1070.59ms total, 1980 calls)
+[LOG] LOGGING KVP DEBUG VALUES:
+[LOG] RenderTime: **7.75ms avg**
+[LOG] CollisionTime: **7.70ms avg**
+[LOG] UpdateTime: **0.26ms avg**
+[LOG] GridBuildTime: **0.54ms avg**
+[LOG] 1% LOW: **14ms**
+[LOG] FPS: **52**
+[LOG] DOTS_AMOUNT: **20000**
 
 
 # Cool pics

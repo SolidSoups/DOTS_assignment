@@ -3,10 +3,10 @@
 #include "Game.h"
 #include "Settings.h"
 #include <Debug.h>
+#include "SimpleProfiler.h"
 #include <SDL3/SDL.h>
 #include <SDL3_ttf/SDL_ttf.h>
 #include <string>
-#include "SimpleProfiler.h"
 #include "Dots.h"
 #include "ThreadPool.h"
 
@@ -33,7 +33,11 @@ int main() {
 
   ThreadPool* threadPool = new ThreadPool();
 
-  DotRenderer *renderer = new DotRenderer(window, threadPool);
+  SimpleProfiler* profiler = new SimpleProfiler();
+  auto& totalClock = profiler->start("total");
+
+  DotRenderer *renderer = new DotRenderer(window, threadPool, totalClock);
+
   if (!renderer->GetSDLRenderer()) {
     const char *err = SDL_GetError();
     Debug::LogError(err);
@@ -56,10 +60,9 @@ int main() {
   renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
 
   Debug *debug = new Debug(renderer, font);
-  Game *game = new Game(renderer, threadPool);
+  Game *game = new Game(renderer, threadPool, totalClock);
 
   FrameTime frameTime;
-  SimpleProfiler pf1;
 
   bool quit = false;
   SDL_Event e;
@@ -69,7 +72,6 @@ int main() {
   double deltaTime = 0;
   double fps = 0;
   int frameCount = 0;
-  int totalFrameCount = 0;
   double fpsAccumulator = 0.0;
   const double FPS_UPDATE_INTERVAL = 0.2f;
 
@@ -82,7 +84,6 @@ int main() {
     lastTick = currentTick;
 
     frameCount++;
-    totalFrameCount++;
     fpsAccumulator += deltaTime;
 
     if (fpsAccumulator >= FPS_UPDATE_INTERVAL) {
@@ -106,10 +107,12 @@ int main() {
       }
     }
 
+    totalClock.startClock();
     renderer->SetDrawColor(0x00, 0x00, 0x00, 0xFF);
     renderer->Clear();
 
     game->Update(deltaTime);
+    totalClock.stopClock();
 
     // - DEBUG
     std::string fpsText = "FPS: " + std::to_string(static_cast<int>(fps));
@@ -122,7 +125,10 @@ int main() {
 
     renderer->Present();
 
-    // std::cin.get();
+    static int pFrameCount=0;
+    if(++pFrameCount % 60 == 0){
+      profiler->reportTimersFull();
+    }
   }
 
   Debug::OutputScreenFields();
