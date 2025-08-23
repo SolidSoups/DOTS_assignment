@@ -12,22 +12,20 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <immintrin.h>
 #include <iostream>
 #include <thread>
 
-DotRenderer::DotRenderer(SDL_Window *window, ThreadPool *threadPool, Timer& timer)
+DotRenderer::DotRenderer(SDL_Window *window, ThreadPool *threadPool,
+                         Timer &timer)
     : m_sdlRenderer(nullptr), m_threadPool(threadPool), timer(timer),
       bufferSize(Settings::SCREEN_WIDTH * Settings::SCREEN_HEIGHT) {
   m_sdlRenderer = SDL_CreateRenderer(window, nullptr);
   if (!m_sdlRenderer)
     return;
 
-  // initialize pixel bufffer modificants
-  const size_t nThreads = threadPool->num_threads;
-  m_threadSortedPixelData.resize(nThreads);
-  for (int i = 0; i < nThreads; i++) {
-    m_threadSortedPixelData[i].resize(nThreads);
-  }
+  // The intermediate buffer m_threadSortedPixelData is no longer needed and has
+  // been removed.
   m_combinedPixelBuffer = new (std::nothrow) uint32_t[bufferSize];
 
   // init frame texture
@@ -44,10 +42,14 @@ DotRenderer::DotRenderer(SDL_Window *window, ThreadPool *threadPool, Timer& time
 // may be naive, but its precomputed anyways
 void DotRenderer::CreateCircle(int radius) {
   CirclePixels newCircle;
-  for (int x = -radius; x <= radius; x++) {
-    for (int y = -radius; y <= radius; y++) {
+  for (int y = -radius; y <= radius; y++) {
+    for (int x = -radius; x <= radius; x++) {
       if ((x * x + y * y) <= radius * radius) { // inside the circle
-        newCircle.offsets.push_back({x, y});
+        int startX = x;
+        while ((x * x) + (y * y) <= radius * radius) {
+          x++;
+        }
+        newCircle.spans.push_back({y, startX, x - startX});
       }
     }
   }
@@ -59,6 +61,7 @@ DotRenderer::~DotRenderer() {
 
   if (m_sdlRenderer) {
     SDL_DestroyTexture(frameTexture);
+
     SDL_DestroyRenderer(m_sdlRenderer);
     m_sdlRenderer = nullptr;
   }
@@ -88,51 +91,91 @@ void DotRenderer::DrawPoint(int x, int y) {
   }
 }
 
-void DotRenderer::BatchDrawCirclesCPUThreaded(float pos_x[], float pos_y[],
-                                              uint8_t radii[], int red[],
-                                              size_t size) {
+// =========================================================================================
+// SINGLE-PASS IMPLEMENTATION
+// =========================================================================================
+void DotRenderer::BatchDrawCirclesCPUThreaded(
+    float pos_x[], float pos_y[], uint8_t radii[],
+    std::vector<size_t> aliveIndices, Timer& timer) {
+  Timer& t_total = timer.startChild("batch_rendering");
+  size_t size = aliveIndices.size();
+
   if (!m_sdlRenderer || size == 0)
     return;
 
-  auto& t_total = timer.startChild("render_total");
 
-  std::vector<std::thread> workers;
-  const int indicesPerThread = size / MAX_THREADS;
+  // Clear the buffer for the new frame.
+  memset(m_combinedPixelBuffer, 0, bufferSize * sizeof(uint32_t));
 
   const int nThreads = m_threadPool->num_threads;
+  const int rowsPerThread = Settings::SCREEN_HEIGHT / nThreads;
 
-  // queue work for threads
-  auto& t_drawBuffer = t_total.startChild("drawing_buffers");
-  auto& t_drawBuffer_queueJobs = t_drawBuffer.startChild("queuing_jobs");
-  for (size_t t = 0; t < nThreads; ++t) {
-    // we need to know what indices to work on
-    size_t start = t * indicesPerThread;
-    size_t end = (t == nThreads - 1) ? size - 1 : start + indicesPerThread;
+  // RENDER THREADING: One job per screen-space region
+  auto &t_drawing = t_total.startChild("drawing_and_blending");
+  auto &t_queueing = t_drawing.startChild("queuing_jobs");
+  for (int t = 0; t < nThreads; ++t) {
+    // 1. Divide the screen into horizontal regions (rows) for each thread
+    const int startY = t * rowsPerThread;
+    const int endY =
+        (t == nThreads - 1) ? Settings::SCREEN_HEIGHT : startY + rowsPerThread;
 
-    // clear the old pixel data
-    for (auto &bin : m_threadSortedPixelData[t]) {
-      bin.clear();
-    }
+    m_threadPool->queueJob(
+      [this, &aliveIndices, pos_x, pos_y, radii, size, startY, endY]() {
+        for (size_t di = 0; di < size; ++di) {
+          size_t index = aliveIndices[di];
 
-    m_threadPool->queueJob([this, pos_x, pos_y, radii, red, t, start, end]() {
-      for (size_t i = start; i <= end; i++) {
-        DrawFilledCircle(pos_x[i], pos_y[i], radii[i], red[i], 125, 125, 255,
-                         t);
-      }
-    });
+          const int cX = static_cast<int>(pos_x[index]);
+          const int cY = static_cast<int>(pos_y[index]);
+          const int radius = radii[index];
+
+          // quick bound check if to skip dots not in this region
+          if(cY + radius < startY || cY - radius >= endY)
+            continue;
+
+          // find the cached dot
+          auto it = circleCache.find(radius);
+          if(it == circleCache.end())
+            continue;
+
+          // calculate color of this dot
+          constexpr float foo = 0.5f * 255.f * 4.f;
+          uint8_t red = (radii[index] - Dots::RADIUS) * foo;
+          // ARGB
+          uint32_t color = (255 << 24) | (red << 16) | (125 << 8) | 125; 
+
+          for(const auto &span : it->second.spans){
+            int pixelY = cY + span.y_offset;
+
+            // draw pixel span ONLY if it falls within this threads region
+            if(pixelY >= startY && pixelY < endY){
+              int startX = cX + span.x_start_offset;
+              int endX = startX + span.length;
+
+              int clampedStartX = std::max(0, startX);
+              int clampedEndX = std::min(Settings::SCREEN_WIDTH, endX);
+              int clampedLength = clampedEndX - clampedStartX;
+
+              if(clampedLength > 0){
+                size_t pixelIndex = clampedStartX + pixelY * Settings::SCREEN_WIDTH;
+
+                // blend the entire contiguos scanline using the SIMD function
+                BlendSolidColorSIMD(color, m_combinedPixelBuffer + pixelIndex, clampedLength);
+              }
+            }
+          }
+        }
+      });
   }
-  t_drawBuffer_queueJobs.stopClock();
+  t_queueing.stopClock();
 
-  auto& t_drawBuffer_waitForThreads = t_drawBuffer.startChild("wait_for_threads");
+  // wait only ONCE for all rendering jobs to complete.
+  auto &t_wait = t_drawing.startChild("wait_for_threads");
   m_threadPool->wait();
-  t_drawBuffer_waitForThreads.stopClock();
-  t_drawBuffer.stopClock();
-
-  // combine pixelBuffers
-  CombineThreadBuffers(m_threadSortedPixelData, m_combinedPixelBuffer, t_total);
+  t_wait.stopClock();
+  t_drawing.stopClock();
 
   // update and render texture
-  auto& t_sdlCalls = t_total.startChild("sdl_calls");
+  auto &t_sdlCalls = t_total.startChild("sdl_calls");
   SDL_UpdateTexture(frameTexture, nullptr, m_combinedPixelBuffer,
                     Settings::SCREEN_WIDTH * sizeof(uint32_t));
   SDL_RenderTexture(m_sdlRenderer, frameTexture, nullptr, nullptr);
@@ -140,36 +183,84 @@ void DotRenderer::BatchDrawCirclesCPUThreaded(float pos_x[], float pos_y[],
   t_total.stopClock();
 }
 
-// const size_t indicesPerThread = pixelData.size() / m_threadPool->num_threads;
-void DotRenderer::CombineThreadBuffers(
-    const std::vector<std::vector<std::vector<Pixel>>> &pixelData,
-    uint32_t *outputBuffer, Timer& t_total) {
-  auto& t_combineBuffers = t_total.startChild("combine_buffers");
+void DotRenderer::BlendSolidColorSIMD(uint32_t color, uint32_t *dst_buffer,
+                                      size_t size) {
+  // Create a 128-bit register with the solid color broadcast to all 4 lanes
+  __m128i src_pixels = _mm_set1_epi32(color);
 
-  memset(outputBuffer, 0, bufferSize * sizeof(uint32_t));
+  // unpack the src pixels and interleave them with zeros (for additive
+  // saturation)
+  __m128i zero = _mm_setzero_si128();
+  __m128i src_lo = _mm_unpacklo_epi8(src_pixels, zero);
+  __m128i src_hi = _mm_unpackhi_epi8(src_pixels, zero);
 
-  const int maxThreads = m_threadPool->num_threads;
+  size_t i = 0;
+  for (; i + 3 < size; i += 4) {
+    // load the dst pixels into a 128-bit (4x4 byte integers)
+    __m128i dst_pixels = _mm_loadu_si128((__m128i *)(dst_buffer + i));
 
-  auto& t_combineBuffers_startThreads = t_combineBuffers.startChild("start_threads");
-  for (int t = 0; t < maxThreads; ++t) {
-    m_threadPool->queueJob([this, &pixelData, outputBuffer, t] {
-      // This combining thread (t) is reponsible for one region.
-      // It must process all bins for its region from ALL drawing threads
-      for (int i = 0; i < pixelData.size(); i++) {
-        for (const auto &pixel : pixelData[i][t]) {
-          outputBuffer[pixel.index] =
-              BlendAdditive(pixel.color, outputBuffer[pixel.index]);
-        }
-      }
-    });
+    // Unpack the 8-bit dst pixels into an interleaved 16-bit format (2x4 byte
+    // integers, each spaced with 2 byte zero's)
+    __m128i dst_lo = _mm_unpacklo_epi8(dst_pixels, zero);
+    // add the result of both the src and dst lows, the 's' in 'adds' ensures
+    // saturation if the value overflows 16-bits (ie 65535), then it is set to
+    // the max
+    __m128i result_lo = _mm_adds_epu16(src_lo, dst_lo);
+
+    // Unpack the 8-bit dst pixels into an interleaved 16-bit format (2x4 bytes
+    // integers, each spaced with 2 zeros)
+    __m128i dst_hi = _mm_unpackhi_epi8(dst_pixels, zero);
+    // add the result of the hi's with saturation
+    __m128i result_hi = _mm_adds_epu16(src_hi, dst_hi);
+
+    // combine the interleaved hi and lo into one register, adding each lane
+    // together
+    __m128i result = _mm_packus_epi16(result_lo, result_hi);
+    _mm_storeu_si128((__m128i *)(dst_buffer + i), result);
   }
-  t_combineBuffers_startThreads.stopClock();
 
-  auto& t_combineBuffers_waitForThreads = t_combineBuffers.startChild("wait_for_threads");
-  m_threadPool->wait();
-  t_combineBuffers_waitForThreads.stopClock();
+  for (; i < size; ++i) {
+    dst_buffer[i] = BlendAdditive(color, dst_buffer[i]);
+  }
+}
 
-  t_combineBuffers.stopClock();
+void DotRenderer::BlendAdditiveSIMD(uint32_t *src_buffer, uint32_t *dst_buffer,
+                                    size_t size) {
+  // Process 4 pixels at a time
+  size_t i = 0;
+  for (; i + 3 < size; i += 4) {
+    // Load 4 pixels from each buffer into 128-bit registers
+    __m128i src_pixels = _mm_loadu_si128((__m128i *)(src_buffer + i));
+    __m128i dst_pixels = _mm_loadu_si128((__m128i *)(dst_buffer + i));
+
+    // used for the interleaving, allowing us to add two "unpacked"
+    // registers together with the overflow going in the "zero spots"
+    // which can later be ignored
+    __m128i zero = _mm_setzero_si128();
+
+    // Unpack the 8-bit channels into 16-bit
+    __m128i src_lo = _mm_unpacklo_epi8(src_pixels, zero);
+    __m128i dst_lo = _mm_unpacklo_epi8(dst_pixels, zero);
+    // Add the channels with "unsigned saturation", automatically
+    // clamping the result to 0-255
+    __m128i result_lo = _mm_adds_epu16(src_lo, dst_lo);
+
+    // Repack the 16-bit words back into 8-bit channels
+    // We do this for the high half as well
+    __m128i src_hi = _mm_unpackhi_epi8(src_pixels, zero);
+    __m128i dst_hi = _mm_unpackhi_epi8(dst_pixels, zero);
+    __m128i result_hi = _mm_adds_epu16(src_hi, dst_hi);
+
+    __m128i result = _mm_packus_epi16(result_lo, result_hi);
+
+    // store the 4 blended pixels back into the destination buffer
+    _mm_storeu_si128((__m128i *)(dst_buffer + i), result);
+  }
+
+  // Handle any leftover pixels (if size is not a multiple of 4)
+  for (; i < size; ++i) {
+    dst_buffer[i] = BlendAdditive(src_buffer[i], dst_buffer[i]);
+  }
 }
 
 // no support for alpha
@@ -191,49 +282,27 @@ uint32_t DotRenderer::BlendAdditive(uint32_t src, uint32_t dst) {
   return 0xFF000000 | (r << 16) | (g << 8) | b; // Full alpha
 }
 
-void DotRenderer::DrawFilledCircle(int centerX, int centerY, int radius, int r,
-                                   int b, int g, int a, int drawingThreadId) {
-  if (!m_sdlRenderer)
-    return;
-
-  if (radius > Dots::RADIUS + 2)
-    return;
-
-  if (circleCache.find(radius) == circleCache.end()) {
-    CreateCircle(radius);
-  }
-
-  // lets just do white
-  uint32_t color = (a << 24) | (r << 16) | (g << 8) | b;
-
-  const int rowsPerRegion = Settings::SCREEN_HEIGHT / m_threadPool->num_threads;
-
-  const auto &offsets = circleCache[radius].offsets;
-  for (const auto &[dx, dy] : offsets) {
-    int absX = centerX + dx;
-    int absY = centerY + dy;
-
-    if (absX < 0 || absX >= Settings::SCREEN_WIDTH || absY < 0 ||
-        absY >= Settings::SCREEN_HEIGHT)
-      continue;
-
-    size_t pixelIndex = absX + absY * Settings::SCREEN_WIDTH;
-    size_t regionIndex =
-        std::min((int)(m_threadPool->num_threads - 1), absY / rowsPerRegion);
-
-    m_threadSortedPixelData[drawingThreadId][regionIndex].push_back(
-        {pixelIndex, color});
-  }
+bool DotRenderer::isOutOfBounds(int x, int y) const {
+  return x < 0 || x >= Settings::SCREEN_WIDTH || y < 0 ||
+         y >= Settings::SCREEN_HEIGHT;
 }
+
+// DrawFilledCircle, CombineThreadBuffers, and getRegionIndex have been removed.
 
 void DotRenderer::DrawRect(float minX, float minY, float maxX, float maxY) {
   if (!m_sdlRenderer)
     return;
 
-  SDL_RenderLine(m_sdlRenderer, minX, minY, maxX, minY); // top
-  SDL_RenderLine(m_sdlRenderer, maxX, minY, maxX, maxY); // right
-  SDL_RenderLine(m_sdlRenderer, minX, maxY, maxX, maxY); // bottom
-  SDL_RenderLine(m_sdlRenderer, minX, minY, minX, maxY); // top
+  SDL_FRect dst{
+    minX, minY,
+    maxX, maxY
+  };
+  SDL_RenderFillRect(m_sdlRenderer, &dst);
+
+  // SDL_RenderLine(m_sdlRenderer, minX, minY, maxX, minY); // top
+  // SDL_RenderLine(m_sdlRenderer, maxX, minY, maxX, maxY); // right
+  // SDL_RenderLine(m_sdlRenderer, minX, maxY, maxX, maxY); // bottom
+  // SDL_RenderLine(m_sdlRenderer, minX, minY, minX, maxY); // top
 }
 
 void DotRenderer::RenderTexture(SDL_Texture *texture, const SDL_FRect *srcRect,

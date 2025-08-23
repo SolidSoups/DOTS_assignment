@@ -1,11 +1,11 @@
 #include "Dots.h"
+#include "Debug.h"
 #include "DotRenderer.h"
 #include "Settings.h"
 #include "glm/gtc/constants.hpp"
 #include <cstring>
 #include <ctime>
 #include <random>
-#include "Debug.h"
 
 thread_local std::mt19937 Dots::rng;
 thread_local std::uniform_real_distribution<float> Dots::angleDist;
@@ -15,8 +15,7 @@ thread_local bool Dots::initialized = false;
 
 // Constructor
 Dots::Dots() {
-  std::string dotsCountText =
-      "DOTS_AMOUNT: " + std::to_string(MAX_DOTS);
+  std::string dotsCountText = "DOTS_AMOUNT: " + std::to_string(MAX_DOTS);
   Debug::UpdateScreenField("DOTS", dotsCountText);
 }
 
@@ -36,24 +35,33 @@ void Dots::ensureRngInit() {
 
 // Initializes the whole structure
 void Dots::init() {
-  ensureRngInit(); 
+  ensureRngInit();
 
+  alive_indices.reserve(MAX_DOTS); // avoid capacity thrashing
   for (int i = 0; i < MAX_DOTS; i++) {
+    alive_indices.push_back(i);
+
+    // get random x and y positions
     positions_x[i] = xDist(rng);
     positions_y[i] = yDist(rng);
 
+    // get random angle
     float angle = angleDist(rng);
+
+    // calculate said random angle
     velocities_x[i] = std::cos(angle);
     velocities_y[i] = std::sin(angle);
 
+    // give starting radius
     radii[i] = RADIUS;
   }
 }
 
 // Reinitializes a single dot
 void Dots::initDot(size_t index) {
-  ensureRngInit(); 
+  ensureRngInit();
 
+  // same randomness
   positions_x[index] = xDist(rng);
   positions_y[index] = yDist(rng);
 
@@ -64,9 +72,8 @@ void Dots::initDot(size_t index) {
   radii[index] = RADIUS;
 }
 
-// Updates all the dots
 void Dots::updateAll(float deltaTime) {
-  for (size_t i = 0; i < MAX_DOTS; i++) {
+  for (size_t i : alive_indices) {
     positions_x[i] += velocities_x[i] * VELOCITY * deltaTime;
     positions_y[i] += velocities_y[i] * VELOCITY * deltaTime;
 
@@ -91,18 +98,11 @@ void Dots::updateAll(float deltaTime) {
 }
 
 // Renders all the dots
-void Dots::renderAll(DotRenderer *aRenderer) {
-  const float foo = 0.5f * 255.0f;
-
-  int reds[MAX_DOTS];
-  for (size_t i = 0; i < MAX_DOTS; i++) {
-    reds[i] = foo + (radii[i] - RADIUS) * foo * 3.f;
-  }
+void Dots::renderAll(DotRenderer *aRenderer, Timer& timer) {
   aRenderer->BatchDrawCirclesCPUThreaded(
     positions_x,
     positions_y,
-    radii,
-    reds,
-    MAX_DOTS
-  );
+    radii, 
+    alive_indices,
+    timer);
 }

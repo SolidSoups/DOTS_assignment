@@ -21,11 +21,16 @@ Debug::Debug(DotRenderer *renderer, TTF_Font *font)
   }
 }
 
+void Debug::DeleteInstance(){
+  if(Instance != nullptr){
+    delete Instance;
+  }
+}
+
 Debug::~Debug(){
   for(const auto& item_kvp : textDebugInfoMap){
     SDL_DestroyTexture(item_kvp.second.texture);
   } 
-  delete Instance;
 }
 
 // screen logging

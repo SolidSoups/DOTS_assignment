@@ -52,7 +52,7 @@ build cmake_object_order_depends_target_DotEngine: phony || .
 build CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/Debug.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
   DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o.d
-  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
+  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic -march=native
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
@@ -60,7 +60,7 @@ build CMakeFiles/DotEngine.dir/DotEngine/Debug.cpp.o: CXX_COMPILER__DotEngine_un
 build CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/DotRenderer.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
   DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o.d
-  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
+  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic -march=native
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
@@ -68,7 +68,7 @@ build CMakeFiles/DotEngine.dir/DotEngine/DotRenderer.cpp.o: CXX_COMPILER__DotEng
 build CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/Dots.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
   DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o.d
-  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
+  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic -march=native
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
@@ -76,7 +76,7 @@ build CMakeFiles/DotEngine.dir/DotEngine/Dots.cpp.o: CXX_COMPILER__DotEngine_uns
 build CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/Game.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
   DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o.d
-  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
+  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic -march=native
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
@@ -84,7 +84,7 @@ build CMakeFiles/DotEngine.dir/DotEngine/Game.cpp.o: CXX_COMPILER__DotEngine_uns
 build CMakeFiles/DotEngine.dir/DotEngine/ThreadPool.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/ThreadPool.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
   DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/ThreadPool.cpp.o.d
-  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
+  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic -march=native
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine
@@ -92,7 +92,7 @@ build CMakeFiles/DotEngine.dir/DotEngine/ThreadPool.cpp.o: CXX_COMPILER__DotEngi
 build CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o: CXX_COMPILER__DotEngine_unscanned_Debug /home/eliaspersonal/repos/dots/DotEngine/main.cpp || cmake_object_order_depends_target_DotEngine
   DEFINES = -DDEBUG=1
   DEP_FILE = CMakeFiles/DotEngine.dir/DotEngine/main.cpp.o.d
-  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic
+  FLAGS = -g -Wall -Wextra -g -O0 -std=gnu++20 -g -O0 -Wall -Wextra -Wpedantic -march=native
   INCLUDES = -I/home/eliaspersonal/repos/dots/DotEngine
   OBJECT_DIR = CMakeFiles/DotEngine.dir
   OBJECT_FILE_DIR = CMakeFiles/DotEngine.dir/DotEngine

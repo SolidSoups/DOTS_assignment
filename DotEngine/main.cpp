@@ -121,21 +121,27 @@ int main() {
         "1% LOW: " + std::to_string(static_cast<int>(frameTime.onepercentlow)) +
         "ms";
     debug->UpdateScreenField("opl", onePLow);
+
+    renderer->SetDrawColor(0, 0, 0, 150);
+    renderer->DrawRect(0, 0, 300, 270);
+
     debug->Render();
 
     renderer->Present();
 
     static int pFrameCount=0;
     if(++pFrameCount % 60 == 0){
-      profiler->reportTimersFull();
+      profiler->reportTimersFull(true);
     }
   }
 
   Debug::OutputScreenFields();
 
+  delete profiler;
   delete threadPool;
   delete game;
   delete renderer;
+  Debug::DeleteInstance();
   TTF_CloseFont(font);
   SDL_DestroyWindow(window);
   TTF_Quit();

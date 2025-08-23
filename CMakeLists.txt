@@ -52,5 +52,5 @@ endif()
 
 # Enable more compiler warnings
 target_compile_options(${PROJECT_NAME} PRIVATE
-  -Wall -Wextra -Wpedantic
+  -Wall -Wextra -Wpedantic -march=native
 )

@@ -8,32 +8,34 @@
 #include <cstring>
 
 class SpatialGrid {
-private:
+public:
   static constexpr int GRID_WIDTH = 80;
   static constexpr int GRID_HEIGHT = 45;
   static constexpr int CELL_CAPACITY = 64;
+private:
 
+
+  const float cell_width;
+  const float cell_height;
+public:
   struct Cell {
     size_t indices[CELL_CAPACITY];
     int count = 0;
   };
+  Cell Grid[GRID_WIDTH][GRID_HEIGHT];
 
-  Cell grid[GRID_WIDTH][GRID_HEIGHT];
-  float cell_width;
-  float cell_height;
 
 public:
-  SpatialGrid() {
-    cell_width = Settings::SCREEN_WIDTH / float(GRID_WIDTH);
-    cell_height = Settings::SCREEN_HEIGHT / float(GRID_HEIGHT);
-  }
+  SpatialGrid()
+      : cell_width(Settings::SCREEN_WIDTH / float(GRID_WIDTH)),
+        cell_height(Settings::SCREEN_HEIGHT / float(GRID_HEIGHT)) {}
 
-  void clear() { memset(grid, 0, sizeof(grid)); }
+  void clear() { memset(Grid, 0, sizeof(Grid)); }
 
   void rebuild(const Dots &dots) {
     clear();
 
-    for (size_t i = 0; i < dots.size(); i++) {
+    for (size_t i : dots.alive_indices) {
       // skip dead dots
       if (dots.radii[i] >= Dots::RADIUS + 3)
         continue;
@@ -43,7 +45,7 @@ public:
 
       // bounds check
       if (gx >= 0 && gx < GRID_WIDTH && gy >= 0 && gy < GRID_HEIGHT) {
-        Cell &cell = grid[gy][gx];
+        Cell &cell = Grid[gy][gx];
         if (cell.count < CELL_CAPACITY) {
           cell.indices[cell.count++] = static_cast<uint16_t>(i);
         }
@@ -54,14 +56,16 @@ public:
   template <typename Callback>
   void queryNeighbours(float x, float y, float radius, Callback cb) const {
     int min_gx = std::max(0, static_cast<int>((x - radius) / cell_width));
-    int max_gx = std::min(GRID_WIDTH, static_cast<int>((x + radius) / cell_width));
+    int max_gx =
+        std::min(GRID_WIDTH, static_cast<int>((x + radius) / cell_width));
     int min_gy = std::max(0, static_cast<int>((y - radius) / cell_height));
-    int max_gy = std::min(GRID_HEIGHT, static_cast<int>((y + radius) / cell_height));
+    int max_gy =
+        std::min(GRID_HEIGHT, static_cast<int>((y + radius) / cell_height));
 
-    for(int gy = min_gy; gy <= max_gy; gy++){
-      for(int gx = min_gx; gx <= max_gx; gx++){
-        const Cell& cell = grid[gy][gx];
-        for(size_t i = 0; i < cell.count; i++){
+    for (int gy = min_gy; gy <= max_gy; gy++) {
+      for (int gx = min_gx; gx <= max_gx; gx++) {
+        const Cell &cell = Grid[gy][gx];
+        for (size_t i = 0; i < cell.count; i++) {
           cb(cell.indices[i]);
         }
       }
@@ -73,7 +77,8 @@ public:
     size_t occupied = 0;
     for (int y = 0; y < GRID_HEIGHT; y++) {
       for (int x = 0; x < GRID_WIDTH; x++) {
-        if (grid[y][x].count > 0) occupied++;
+        if (Grid[y][x].count > 0)
+          occupied++;
       }
     }
     return occupied;
@@ -84,8 +89,8 @@ public:
     size_t occupied_cells = 0;
     for (int y = 0; y < GRID_HEIGHT; y++) {
       for (int x = 0; x < GRID_WIDTH; x++) {
-        if (grid[y][x].count > 0) {
-          total_dots += grid[y][x].count;
+        if (Grid[y][x].count > 0) {
+          total_dots += Grid[y][x].count;
           occupied_cells++;
         }
       }

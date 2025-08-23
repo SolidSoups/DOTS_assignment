@@ -3,6 +3,7 @@
 
 ThreadPool::ThreadPool()
   : num_threads(std::thread::hardware_concurrency())
+
 {
   // RaII
   std::cout << "[ThreadPool] Creating Threads" << "\n";
@@ -48,9 +49,6 @@ void ThreadPool::queueJob(const std::function<void()>& job){
   {
     std::unique_lock<std::mutex> lock(m_queue_mutex);
     m_jobs.push(job);
-  }
-  {
-    std::unique_lock<std::mutex> lock(m_completion_mutex);
     m_active_jobs++;
   }
   // wake up any locked threads

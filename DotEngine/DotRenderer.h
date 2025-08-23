@@ -1,57 +1,50 @@
 #pragma once
+#include "SimpleProfiler.h"
 #include <SDL3/SDL.h>
+#include <atomic>
+#include <cstdint>
 #include <unordered_map>
 #include <vector>
-#include <cstdint>
-#include <atomic>
-#include "SimpleProfiler.h"
 
 class ThreadPool;
 struct Timer;
 
 class DotRenderer {
 private:
-  static constexpr int MAX_THREADS = 8;
+  bool isOutOfBounds(int x, int y) const;
 
 private:
-  struct CirclePixels{
-    std::vector<std::pair<int, int>> offsets;
-  };
-  struct Pixel{
-    size_t index;
-    uint32_t color;
+  // struct CirclePixels {
+  //   std::vector<std::pair<int, int>> offsets;
+  // };
+
+  struct CircleSpan {
+    int y_offset;
+    int x_start_offset;
+    int length;
   };
 
-  // Sorted like so: [drawingThreadId][regionIndex][pixel]
-  //
-  // Each drawing thread sorts the pixels into regions, which 
-  // each combining thread then can iterate through without 
-  // needing to sort the pixels beforehand.
-  std::vector<std::vector<std::vector<Pixel>>> m_threadSortedPixelData;
+  struct CirclePixels{
+    std::vector<CircleSpan> spans;
+  };
 
   std::unordered_map<int, CirclePixels> circleCache;
   void CreateCircle(int radius);
 
-  uint32_t* m_combinedPixelBuffer;
+  uint32_t *m_combinedPixelBuffer;
   const size_t bufferSize;
 
-  SDL_Texture* frameTexture;
+  SDL_Texture *frameTexture;
 
-  ThreadPool* m_threadPool;
-  Timer& timer;
+  ThreadPool *m_threadPool;
+  Timer &timer;
 
-  Uint8 red;
-  Uint8 green;
-  Uint8 blue;
-  Uint8 alpha;
-  
 public:
-  DotRenderer(SDL_Window *window, ThreadPool* threadPool, Timer& timer);
+  DotRenderer(SDL_Window *window, ThreadPool *threadPool, Timer &timer);
 
   ~DotRenderer();
 
   SDL_Renderer *GetSDLRenderer() const { return m_sdlRenderer; }
-
 
   void SetDrawColor(Uint8 r, Uint8 g, Uint8 b, Uint8 a);
   void Clear();
@@ -60,25 +53,26 @@ public:
   void DrawRect(float mx, float my, float Mx, float My);
   void RenderTexture(SDL_Texture *texture, const SDL_FRect *srcRect,
                      const SDL_FRect *dstRect);
-  void DrawFilledCircle(int centerX,
-                        int centerY,
-                        int radius,
-                        int r,
-                        int g,
-                        int b,
-                        int a,
-                        int drawingThreadId);
-  void BatchDrawCirclesCPUThreaded(
-    float pos_x[],
-    float pos_y[],
-    uint8_t radii[],
-    int red[],
-    size_t size
-  );
-  void CombineThreadBuffers(
-    const std::vector<std::vector<std::vector<Pixel>>> &pixelData,
-    uint32_t* outputBuffer, Timer& t_total
-  );
+  void BatchDrawCirclesCPUThreaded(float pos_x[], float pos_y[],
+                                   uint8_t radii[],
+                                   std::vector<size_t> aliveIndices,
+                                   Timer& timer);
+  /*
+  * Blends the pixels of the src and dst register, and outputs the result to the dst buffer. Uses SIMD to process 4 pixels at a time.
+  *
+  * @param src The src pixel color buffer
+  * @param dst The dst pixel color buffer
+  * @param size The size of the buffers
+  */
+  void BlendAdditiveSIMD(uint32_t *src, uint32_t *dst, size_t size);
+  void BlendSolidColorSIMD(uint32_t color, uint32_t* dst_buffer, size_t size);
+  /*
+  * Blends the src and dst pixels and returns the result
+  *
+  * @param src The src pixel color
+  * @param dst The dst pixel color
+  * @return The blended color value of that pixel
+  */
   uint32_t BlendAdditive(uint32_t src, uint32_t dst);
 
 private:
